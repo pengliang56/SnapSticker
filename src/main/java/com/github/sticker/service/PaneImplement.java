@@ -61,6 +61,10 @@ public class PaneImplement {
     private static final AtomicBoolean CAPTURE_IN_PROGRESS = new AtomicBoolean(false);
     // 边框控制点容器
     private StackPane borderHandles;
+    // 添加当前屏幕引用
+    private Screen currentScreen;
+    // 添加鼠标位置监听器
+    private javafx.animation.AnimationTimer mouseTracker;
 
     // 截图选择后等待确认的临时存储
     private double finalX1, finalY1, finalX2, finalY2;
@@ -83,8 +87,20 @@ public class PaneImplement {
             debugLog("开始截图流程");
 
             // 获取鼠标所在屏幕
-            Screen currentScreen = getCurrentMouseScreen();
-            Rectangle2D screenBounds = currentScreen.getBounds();
+            currentScreen = getCurrentMouseScreen();
+            createScreenshotStage(currentScreen, primaryStage);
+
+            debugLog("截图窗口已创建并显示");
+        } catch (Exception e) {
+            debugLog("截图初始化出错: " + e.getMessage());
+            e.printStackTrace();
+            resetCaptureState();
+        }
+    }
+
+    private void createScreenshotStage(Screen screen, Stage primaryStage) {
+        try {
+            Rectangle2D screenBounds = screen.getBounds();
 
             // 创建一个透明的全屏窗口
             Stage screenshotStage = new Stage();
@@ -106,42 +122,19 @@ public class PaneImplement {
                     screenBounds.getWidth(),
                     screenBounds.getHeight());
             overlayRect.setFill(Color.color(0, 0, 0, OVERLAY_OPACITY)); // 半透明黑色遮罩
+            overlayRect.setMouseTransparent(false); // 确保可以捕获鼠标事件
             root.getChildren().add(overlayRect);
 
             // 创建场景
             Scene scene = new Scene(root, screenBounds.getWidth(), screenBounds.getHeight());
             scene.setFill(Color.TRANSPARENT); // 设置场景背景为透明
 
-            // 设置场景上的ESC键全局捕获 - 这是最重要的一层保障
+            // 设置场景上的ESC键全局捕获
             scene.setOnKeyPressed(e -> {
                 if (e.getCode() == KeyCode.ESCAPE) {
                     debugLog("ESC键被按下 - 立即取消截图");
-
-                    // 尝试取消截图
-                    try {
-                        cancelCapture();
-                    } catch (Exception ex) {
-                        debugLog("取消截图时出错: " + ex.getMessage());
-
-                        // 如果取消失败，尝试强制关闭窗口
-                        try {
-                            if (captureStage != null)
-                                captureStage.close();
-                        } catch (Exception ignored) {
-                        }
-
-                        // 确保状态被重置
-                        CAPTURE_IN_PROGRESS.set(false);
-
-                        // 通知全局监听器
-                        try {
-                            GlobalKeyListener.getInstance().notifyScreenshotFullyCompleted();
-                        } catch (Exception ignored) {
-                        }
-                    }
-
-                    e.consume(); // 确保事件不再传播
-                    return;
+                    cancelCapture();
+                    e.consume();
                 }
             });
 
@@ -162,7 +155,7 @@ public class PaneImplement {
             setupInitialCaptureUI(scene);
             setupMouseEvents(scene);
 
-            // 添加全局键盘事件监听器 - 这是第二层保障
+            // 添加全局键盘事件监听器
             scene.addEventFilter(KeyEvent.KEY_PRESSED, e -> {
                 if (e.getCode() == KeyCode.ESCAPE) {
                     debugLog("ESC键被按下(事件过滤器) - 立即取消截图");
@@ -171,27 +164,70 @@ public class PaneImplement {
                 }
             });
 
-            // 添加窗口关闭事件监听器 - 确保清理资源
+            // 添加窗口关闭事件监听器
             screenshotStage.setOnCloseRequest(e -> {
                 debugLog("截图窗口关闭事件被触发");
                 resetCaptureState();
             });
 
-            debugLog("截图窗口已创建并显示");
+            // 启动鼠标位置跟踪
+            startMouseTracking();
+
         } catch (Exception e) {
-            debugLog("截图初始化出错: " + e.getMessage());
+            debugLog("创建截图窗口时出错: " + e.getMessage());
             e.printStackTrace();
-
-            // 确保重置状态
-            CAPTURE_IN_PROGRESS.set(false);
-
-            // 尝试通知全局监听器
-            try {
-                GlobalKeyListener.getInstance().notifyScreenshotFullyCompleted();
-            } catch (Exception ex) {
-                debugLog("通知截图完成时出错: " + ex.getMessage());
-            }
+            resetCaptureState();
         }
+    }
+
+    private void startMouseTracking() {
+        if (mouseTracker != null) {
+            mouseTracker.stop();
+        }
+
+        mouseTracker = new javafx.animation.AnimationTimer() {
+            @Override
+            public void handle(long now) {
+                try {
+                    Point mousePosition = MouseInfo.getPointerInfo().getLocation();
+                    double mouseX = mousePosition.getX();
+                    double mouseY = mousePosition.getY();
+
+                    // 检查鼠标是否在当前屏幕
+                    if (!currentScreen.getBounds().contains(mouseX, mouseY)) {
+                        // 鼠标已移动到其他屏幕
+                        Screen newScreen = null;
+                        for (Screen screen : Screen.getScreens()) {
+                            if (screen.getBounds().contains(mouseX, mouseY)) {
+                                newScreen = screen;
+                                break;
+                            }
+                        }
+
+                        if (newScreen != null && newScreen != currentScreen) {
+                            debugLog("鼠标移动到新屏幕: " + newScreen.getBounds());
+                            
+                            // 关闭当前屏幕的窗口
+                            if (captureStage != null) {
+                                captureStage.close();
+                            }
+
+                            // 清理当前屏幕的资源
+                            cleanupResources();
+
+                            // 更新当前屏幕引用
+                            currentScreen = newScreen;
+
+                            // 在新屏幕创建新的截图窗口
+                            createScreenshotStage(newScreen, null);
+                        }
+                    }
+                } catch (Exception e) {
+                    debugLog("鼠标跟踪出错: " + e.getMessage());
+                }
+            }
+        };
+        mouseTracker.start();
     }
 
     /**
@@ -200,6 +236,12 @@ public class PaneImplement {
     public void cancelCapture() {
         try {
             debugLog("取消截图操作被调用");
+
+            // 停止鼠标跟踪
+            if (mouseTracker != null) {
+                mouseTracker.stop();
+                mouseTracker = null;
+            }
 
             // 检查截图窗口是否存在
             if (captureStage != null) {
@@ -215,10 +257,8 @@ public class PaneImplement {
                     scene.setOnMouseReleased(null);
                     scene.setOnMouseMoved(null);
                     // 移除所有事件过滤器
-                    scene.removeEventFilter(KeyEvent.KEY_PRESSED, event -> {
-                    });
-                    scene.removeEventFilter(MouseEvent.ANY, event -> {
-                    });
+                    scene.removeEventFilter(KeyEvent.KEY_PRESSED, event -> {});
+                    scene.removeEventFilter(MouseEvent.ANY, event -> {});
                     debugLog("已移除所有事件处理器");
                 }
 
@@ -226,43 +266,17 @@ public class PaneImplement {
                 Stage stageToClose = captureStage;
                 captureStage = null;
 
-                // 确保关闭窗口，使用try-catch增强健壮性
+                // 确保关闭窗口
                 try {
                     stageToClose.close();
                     debugLog("截图窗口已关闭");
                 } catch (Exception e) {
                     debugLog("关闭截图窗口时出错: " + e.getMessage());
                 }
-            } else {
-                debugLog("截图窗口已为null，无需关闭");
             }
 
-            // 只清理选择框和遮罩相关的UI元素
-            if (root != null) {
-                // 移除选择框
-                if (selectionRect != null) {
-                    root.getChildren().remove(selectionRect);
-                    selectionRect = null;
-                }
-
-                // 移除遮罩
-                if (overlayRect != null) {
-                    root.getChildren().remove(overlayRect);
-                    overlayRect = null;
-                }
-
-                // 移除边框控制点
-                if (borderHandles != null) {
-                    root.getChildren().remove(borderHandles);
-                    borderHandles.getChildren().clear();
-                    borderHandles = null;
-                }
-
-                // 移除所有其他遮罩层
-                root.getChildren().removeIf(node -> node instanceof Shape);
-
-                root = null;
-            }
+            // 清理资源
+            cleanupResources();
 
             // 重置状态标志
             CAPTURE_IN_PROGRESS.set(false);
@@ -279,8 +293,6 @@ public class PaneImplement {
         } catch (Exception e) {
             debugLog("取消截图时发生严重错误: " + e.getMessage());
             e.printStackTrace();
-
-            // 确保重置状态
             CAPTURE_IN_PROGRESS.set(false);
         }
     }
@@ -318,11 +330,11 @@ public class PaneImplement {
      */
     private void setupInitialCaptureUI(Scene scene) {
         // 添加提示文本
-        javafx.scene.text.Text helpText = new javafx.scene.text.Text("按住鼠标左键并拖动以选择区域，ESC键取消");
+        javafx.scene.text.Text helpText = new javafx.scene.text.Text("Hold left mouse button and drag to select area, ESC to cancel");
         helpText.setFill(Color.WHITE);
         helpText.setStroke(Color.BLACK);
         helpText.setStrokeWidth(0.5);
-        helpText.setFont(javafx.scene.text.Font.font("Microsoft YaHei", javafx.scene.text.FontWeight.BOLD, 14));
+        helpText.setFont(javafx.scene.text.Font.font("Arial", javafx.scene.text.FontWeight.BOLD, 14));
 
         // 创建一个半透明的背景框
         Rectangle textBg = new Rectangle();
@@ -360,7 +372,7 @@ public class PaneImplement {
         fadeOut.setDelay(javafx.util.Duration.seconds(2));
         fadeOut.play();
 
-        debugLog("添加了截图提示信息和十字光标");
+        debugLog("Added screenshot hints and crosshair cursor");
     }
 
     /**
@@ -1439,21 +1451,21 @@ public class PaneImplement {
      */
     private void saveImageAs(Image image, Stage owner) {
         try {
-            debugLog("准备保存图像...");
+            debugLog("Preparing to save image...");
 
             // 创建文件选择器
             FileChooser fileChooser = new FileChooser();
-            fileChooser.setTitle("保存截图");
+            fileChooser.setTitle("Save Screenshot");
 
             // 设置文件类型过滤器
-            FileChooser.ExtensionFilter pngFilter = new FileChooser.ExtensionFilter("PNG 图像", "*.png");
-            FileChooser.ExtensionFilter jpgFilter = new FileChooser.ExtensionFilter("JPEG 图像", "*.jpg", "*.jpeg");
+            FileChooser.ExtensionFilter pngFilter = new FileChooser.ExtensionFilter("PNG Image", "*.png");
+            FileChooser.ExtensionFilter jpgFilter = new FileChooser.ExtensionFilter("JPEG Image", "*.jpg", "*.jpeg");
             fileChooser.getExtensionFilters().addAll(pngFilter, jpgFilter);
             fileChooser.setSelectedExtensionFilter(pngFilter);
 
             // 设置初始文件名
             String timestamp = String.format("%1$tY%1$tm%1$td_%1$tH%1$tM%1$tS", System.currentTimeMillis());
-            fileChooser.setInitialFileName("截图_" + timestamp + ".png");
+            fileChooser.setInitialFileName("screenshot_" + timestamp + ".png");
 
             // 显示保存对话框
             File file = fileChooser.showSaveDialog(owner);
@@ -1470,12 +1482,12 @@ public class PaneImplement {
                 BufferedImage bufferedImage = SwingFXUtils.fromFXImage(image, null);
                 ImageIO.write(bufferedImage, formatName, file);
 
-                debugLog("图像已保存到: " + file.getAbsolutePath());
+                debugLog("Image saved to: " + file.getAbsolutePath());
             } else {
-                debugLog("用户取消了保存操作");
+                debugLog("User cancelled save operation");
             }
         } catch (IOException e) {
-            debugLog("保存图像失败: " + e.getMessage());
+            debugLog("Failed to save image: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -1484,84 +1496,47 @@ public class PaneImplement {
      * 清理旧的资源，防止内存泄漏和UI叠加问题
      */
     private void cleanupResources() {
-        debugLog("清理旧的截图资源");
+        debugLog("清理截图资源");
 
-        // 如果存在旧的截图窗口，确保它被关闭
-        if (captureStage != null && captureStage.isShowing()) {
-            try {
-                // 先移除所有事件处理器
-                if (captureStage.getScene() != null) {
-                    Scene scene = captureStage.getScene();
-                    scene.setOnKeyPressed(null);
-                    scene.setOnKeyReleased(null);
-                    scene.setOnMousePressed(null);
-                    scene.setOnMouseDragged(null);
-                    scene.setOnMouseReleased(null);
-                    scene.setOnMouseMoved(null);
-                    // 移除事件过滤器
-                    scene.removeEventFilter(KeyEvent.KEY_PRESSED, event -> {
-                    });
-                    scene.removeEventFilter(MouseEvent.ANY, event -> {
-                    });
-                    debugLog("已移除所有事件处理器");
-                }
-
-                // 记录旧窗口的所有者以便也关闭它
-                Stage oldOwner = null;
-                if (captureStage.getOwner() instanceof Stage) {
-                    oldOwner = (Stage) captureStage.getOwner();
-                }
-
-                // 关闭主窗口
-                captureStage.close();
-
-                // 如果所有者存在，关闭它
-                if (oldOwner != null && oldOwner.isShowing()) {
-                    oldOwner.close();
-                }
-
-                debugLog("已关闭旧的截图窗口");
-            } catch (Exception e) {
-                debugLog("关闭旧截图窗口时出错: " + e.getMessage());
-                e.printStackTrace();
+        // 清理选择框和遮罩相关的UI元素
+        if (root != null) {
+            // 移除选择框
+            if (selectionRect != null) {
+                root.getChildren().remove(selectionRect);
+                selectionRect = null;
             }
+
+            // 移除遮罩
+            if (overlayRect != null) {
+                root.getChildren().remove(overlayRect);
+                overlayRect = null;
+            }
+
+            // 移除边框控制点
+            if (borderHandles != null) {
+                root.getChildren().remove(borderHandles);
+                borderHandles.getChildren().clear();
+                borderHandles = null;
+            }
+
+            // 移除所有其他遮罩层
+            root.getChildren().removeIf(node -> node instanceof Shape);
+
+            root = null;
         }
 
-        // 重置选择框和遮罩引用 - 只保存引用，不修改UI
-        final StackPane handlesToClean = borderHandles;
-
-        // 清空指向这些对象的引用
-        selectionRect = null;
-        overlayRect = null;
-        root = null;
-        borderHandles = null;
-        captureStage = null;
-
-        // 如果有UI元素需要清理，确保在JavaFX线程上执行
-        if (handlesToClean != null) {
-            try {
-                if (Platform.isFxApplicationThread()) {
-                    // 已经在JavaFX线程上，直接清理
-                    handlesToClean.getChildren().clear();
-                    debugLog("直接清理了边框控制点");
-                } else {
-                    // 不在JavaFX线程上，使用runLater安排清理
-                    Platform.runLater(() -> {
-                        try {
-                            handlesToClean.getChildren().clear();
-                            debugLog("异步清理了边框控制点");
-                        } catch (Exception ex) {
-                            debugLog("异步清理边框控制点时出错: " + ex.getMessage());
-                        }
-                    });
-                }
-            } catch (Exception e) {
-                debugLog("清理边框控制点时出错: " + e.getMessage());
-            }
-        }
-
-        // 建议垃圾回收
-        System.gc();
+        // 重置选择相关的状态
+        startX = 0;
+        startY = 0;
+        endX = 0;
+        endY = 0;
+        finalX1 = 0;
+        finalY1 = 0;
+        finalX2 = 0;
+        finalY2 = 0;
+        isMovingSelection = false;
+        isResizing = false;
+        resizeDirection = "";
     }
 
     private static class Delta {
@@ -1639,7 +1614,8 @@ public class PaneImplement {
             // 显示贴图 - 直接在当前线程执行，更快速
             if (capturedImage != null) {
                 try {
-                    showSticker(capturedImage);
+                    // 使用保存的坐标创建贴图
+                    showStickerWithPosition(capturedImage, fx1, fy1);
                 } catch (Exception e) {
                     debugLog("显示截图时出错: " + e.getMessage());
                     e.printStackTrace();
@@ -1674,42 +1650,15 @@ public class PaneImplement {
         debugLog("截图已完成，允许下一次截图");
     }
 
-    private void showSticker(WritableImage image) {
+    private void showStickerWithPosition(WritableImage image, double x, double y) {
         if (image == null) {
-            debugLog("无法显示贴图: 图像为null");
+            debugLog("Cannot show sticker: image is null");
             return;
         }
 
-        debugLog("开始创建贴图窗口，图像尺寸: " + image.getWidth() + "x" + image.getHeight());
+        debugLog("Creating sticker window, image size: " + image.getWidth() + "x" + image.getHeight());
 
         try {
-            // 确保任何可能存在的截图窗口都被关闭
-            if (captureStage != null) {
-                try {
-                    Stage oldStage = captureStage;
-                    captureStage = null;
-                    oldStage.close();
-                    if (oldStage.getOwner() instanceof Stage) {
-                        ((Stage) oldStage.getOwner()).close();
-                    }
-                    debugLog("关闭了存在的截图窗口");
-                } catch (Exception e) {
-                    debugLog("关闭旧截图窗口出错: " + e.getMessage());
-                }
-            }
-
-            // 确保界面实例被释放
-            selectionRect = null;
-            overlayRect = null;
-            root = null;
-            if (borderHandles != null) {
-                borderHandles.getChildren().clear();
-                borderHandles = null;
-            }
-
-            // 确保状态标志被重置
-            CAPTURE_IN_PROGRESS.set(false);
-
             ImageView imageView = new ImageView(image);
 
             // 创建贴图容器
@@ -1719,7 +1668,7 @@ public class PaneImplement {
             // 设置容器大小
             double width = image.getWidth();
             double height = image.getHeight();
-            imageContainer.setPrefWidth(width); // 增加容器大小以容纳边框
+            imageContainer.setPrefWidth(width);
             imageContainer.setPrefHeight(height);
 
             // 创建一个内部容器来包含图片和边框
@@ -1727,16 +1676,13 @@ public class PaneImplement {
             contentContainer.setPrefWidth(width);
             contentContainer.setPrefHeight(height);
 
-            // 创建白色边框 - 使用更大的尺寸来确保边框完全显示
+            // 创建白色边框
             Rectangle border = new Rectangle(width, height);
             border.setFill(null);
             border.setStroke(Color.POWDERBLUE);
             border.setStrokeWidth(2);
             border.setArcWidth(2);
             border.setArcHeight(2);
-            // 将边框居中
-            // border.setX(-3.5);
-            // border.setY(-3.5);
 
             // 设置图片视图的大小
             imageView.setFitWidth(width);
@@ -1746,39 +1692,12 @@ public class PaneImplement {
             // 先添加图片，再添加边框，确保边框在最上层
             contentContainer.getChildren().addAll(imageView, border);
 
-            // 创建缩放控制
-            // final double[] scale = {1.0}; // 初始缩放比例
-            // imageContainer.setOnScroll(event -> {
-            //     double delta = event.getDeltaY() > 0 ? 0.1 : -0.1; // 每次改变10%
-            //     double newScale = Math.min(2.0, Math.max(0.2, scale[0] + delta)); // 限制在20%-200%之间
-                
-            //     if (newScale != scale[0]) {
-            //         scale[0] = newScale;
-                    
-            //         // 更新容器大小
-            //         contentContainer.setPrefWidth(width * newScale);
-            //         contentContainer.setPrefHeight(height * newScale);
-            //         imageContainer.setPrefWidth(width * newScale + 7);
-            //         imageContainer.setPrefHeight(height * newScale + 7);
-                    
-            //         // 更新边框大小
-            //         border.setWidth(width * newScale + 7);
-            //         border.setHeight(height * newScale + 7);
-            //         border.setX(-3.5);
-            //         border.setY(-3.5);
-                    
-            //         // 更新图片大小
-            //         imageView.setFitWidth(width * newScale);
-            //         imageView.setFitHeight(height * newScale);
-            //     }
-            // });
-
             // 添加所有层到容器
             imageContainer.getChildren().add(contentContainer);
 
             // 创建透明背景的场景
             Scene scene = new Scene(imageContainer);
-            scene.setFill(null); // 确保背景完全透明
+            scene.setFill(null);
 
             // 创建透明风格的舞台
             Stage stickerStage = new Stage(StageStyle.TRANSPARENT);
@@ -1792,14 +1711,14 @@ public class PaneImplement {
             // 为贴图窗口添加ESC键处理
             scene.setOnKeyPressed(e -> {
                 if (e.getCode() == KeyCode.ESCAPE) {
-                    debugLog("贴图窗口中ESC键被按下 - 忽略ESC键");
-                    e.consume(); // 只消费事件，不执行任何操作
+                    debugLog("ESC key pressed in sticker window - ignoring");
+                    e.consume();
                 }
             });
 
             // 防止在任务栏和菜单栏中显示图标
-            stickerStage.setTitle(""); // 设置空标题
-            stickerStage.getIcons().clear(); // 清除图标
+            stickerStage.setTitle("");
+            stickerStage.getIcons().clear();
 
             // 设置窗口不在任务栏显示
             try {
@@ -1814,40 +1733,38 @@ public class PaneImplement {
 
                 // 设置贴图窗口的所有者
                 stickerStage.initOwner(ownerStage);
-                debugLog("成功设置贴图窗口的所有者");
+                debugLog("Successfully set sticker window owner");
             } catch (Exception e) {
-                debugLog("设置贴图窗口所有者失败: " + e.getMessage());
+                debugLog("Failed to set sticker window owner: " + e.getMessage());
                 e.printStackTrace();
             }
 
-            // 设置贴图窗口在选择区域的原始位置
-            double captureX = finalX1;
-            double captureY = finalY1;
-            stickerStage.setX(captureX);
-            stickerStage.setY(captureY);
-            debugLog("将贴图窗口放置在选择框最终位置: X=" + captureX + ", Y=" + captureY);
+            // 设置贴图窗口在选择区域的最终位置
+            stickerStage.setX(x);
+            stickerStage.setY(y);
+            debugLog("Placing sticker window at final position: X=" + x + ", Y=" + y);
 
             // 创建右键菜单
             ContextMenu contextMenu = new ContextMenu();
 
             // 复制到剪贴板选项
-            MenuItem copyItem = new MenuItem("复制到剪贴板");
+            MenuItem copyItem = new MenuItem("Copy to Clipboard");
             copyItem.setOnAction(event -> {
                 copyImageToClipboard(image);
                 contextMenu.hide();
             });
 
             // 另存为选项
-            MenuItem saveAsItem = new MenuItem("另存为...");
+            MenuItem saveAsItem = new MenuItem("Save As...");
             saveAsItem.setOnAction(event -> {
                 saveImageAs(image, stickerStage);
                 contextMenu.hide();
             });
 
             // 关闭选项
-            MenuItem closeItem = new MenuItem("关闭");
+            MenuItem closeItem = new MenuItem("Close");
             closeItem.setOnAction(event -> {
-                debugLog("关闭贴图窗口");
+                debugLog("Closing sticker window");
                 if (stickerStage.getOwner() != null) {
                     ((Stage) stickerStage.getOwner()).close();
                 }
@@ -1858,33 +1775,27 @@ public class PaneImplement {
             contextMenu.getItems().addAll(copyItem, saveAsItem, closeItem);
 
             // 鼠标事件处理
-            // 单击隐藏上下文菜单
             imageContainer.setOnMouseClicked(event -> {
                 if (event.getButton() == MouseButton.SECONDARY) {
-                    // 显示右键菜单
                     contextMenu.show(imageContainer, event.getScreenX(), event.getScreenY());
                 } else if (event.getButton() == MouseButton.PRIMARY) {
-                    // 左键点击时隐藏菜单
                     contextMenu.hide();
                 }
             });
 
             // 当鼠标离开贴图区域时也隐藏菜单
             imageContainer.setOnMouseExited(event -> {
-                // 检查鼠标是否在菜单上
                 if (contextMenu.isShowing() && !isMouseNearContextMenu()) {
-                    // 给一个较长的延迟，避免意外关闭
                     new Thread(() -> {
                         try {
-                            Thread.sleep(500); // 增加到500毫秒延迟
+                            Thread.sleep(500);
                             Platform.runLater(() -> {
-                                // 再次检查是否应该关闭
                                 if (contextMenu.isShowing() && !isMouseNearContextMenu()) {
                                     contextMenu.hide();
                                 }
                             });
                         } catch (InterruptedException e) {
-                            // 忽略中断
+                            // Ignore interrupt
                         }
                     }).start();
                 }
@@ -1892,13 +1803,11 @@ public class PaneImplement {
 
             // 添加鼠标进入菜单区域的处理
             contextMenu.setOnShowing(event -> {
-                // 菜单显示时，暂时禁用鼠标离开事件
                 imageContainer.setOnMouseExited(null);
             });
 
             // 添加菜单隐藏事件处理
             contextMenu.setOnHidden(event -> {
-                // 菜单隐藏后，重新启用鼠标离开事件
                 imageContainer.setOnMouseExited(e -> {
                     if (contextMenu.isShowing() && !isMouseNearContextMenu()) {
                         new Thread(() -> {
@@ -1910,7 +1819,7 @@ public class PaneImplement {
                                     }
                                 });
                             } catch (InterruptedException ex) {
-                                // 忽略中断
+                                // Ignore interrupt
                             }
                         }).start();
                     }
@@ -1919,18 +1828,16 @@ public class PaneImplement {
 
             // 显示贴图窗口前确保内容准备就绪
             stickerStage.setOnShown(event -> {
-                // 确保所有UI元素尺寸正确
                 imageContainer.applyCss();
                 imageContainer.layout();
             });
 
-            debugLog("显示贴图窗口");
+            debugLog("Showing sticker window");
             stickerStage.show();
 
             // 拖动功能
             final Delta dragDelta = new Delta();
             imageContainer.setOnMousePressed((MouseEvent mouseEvent) -> {
-                // 只有左键才能拖动
                 if (mouseEvent.getButton() == MouseButton.PRIMARY) {
                     dragDelta.x = stickerStage.getX() - mouseEvent.getScreenX();
                     dragDelta.y = stickerStage.getY() - mouseEvent.getScreenY();
@@ -1938,23 +1845,16 @@ public class PaneImplement {
             });
 
             imageContainer.setOnMouseDragged((MouseEvent mouseEvent) -> {
-                // 只有左键才能拖动
                 if (mouseEvent.getButton() == MouseButton.PRIMARY) {
                     stickerStage.setX(mouseEvent.getScreenX() + dragDelta.x);
                     stickerStage.setY(mouseEvent.getScreenY() + dragDelta.y);
                 }
             });
 
-            // 重要: 在显示贴图窗口后立即重置截图状态
-            // 这样用户可以立即进行下一次截图，不需要等待超时
-            resetCaptureState();
-
-            debugLog("贴图窗口创建完成");
+            debugLog("Sticker window creation completed");
         } catch (Exception e) {
-            debugLog("显示贴图时出错: " + e.getMessage());
+            debugLog("Error showing sticker: " + e.getMessage());
             e.printStackTrace();
-            // 确保在出错时也重置状态
-            resetCaptureState();
         }
     }
 }
