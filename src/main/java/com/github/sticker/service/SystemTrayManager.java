@@ -94,16 +94,23 @@ public class SystemTrayManager {
             PopupMenu popup = new PopupMenu();
             
             // 创建Windows 11风格的菜单项
-            MenuItem takeScreenshotItem = new MenuItem("截取屏幕");
+            MenuItem takeScreenshotItem = new MenuItem("Take Screenshot");
             takeScreenshotItem.addActionListener(e -> {
-                // 使用与F1相同的逻辑初始化截图
-                startScreenshotViaSystemTray();
+                try {
+                    GlobalKeyListener.getInstance().startScreenshotFromSystemTray();
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
             });
             
-            MenuItem exitItem = new MenuItem("退出");
+            MenuItem exitItem = new MenuItem("Exit");
             exitItem.addActionListener(e -> {
-                Platform.exit();
-                System.exit(0);
+                try {
+                    removeTrayIcon();
+                    System.exit(0);
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
             });
             
             popup.add(takeScreenshotItem);
@@ -112,7 +119,7 @@ public class SystemTrayManager {
             
             // 创建托盘图标
             Image iconImage = createWindowsIcon();
-            trayIcon = new TrayIcon(iconImage, "截图贴图工具");
+            trayIcon = new TrayIcon(iconImage, "Screenshot Sticker Tool");
             trayIcon.setImageAutoSize(true);
             trayIcon.setPopupMenu(popup);
             
@@ -132,7 +139,7 @@ public class SystemTrayManager {
             tray.add(trayIcon);
             
             // 添加工具提示和双击动作
-            trayIcon.setToolTip("截图贴图工具 (按F1截图)");
+            trayIcon.setToolTip("Screenshot Sticker Tool (Press F1 to capture)");
             trayIcon.addActionListener(e -> {
                 // 双击图标时截图
                 startScreenshotViaSystemTray();
