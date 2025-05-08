@@ -207,19 +207,35 @@ public class PaneImplement {
                         if (newScreen != null && newScreen != currentScreen) {
                             debugLog("鼠标移动到新屏幕: " + newScreen.getBounds());
                             
-                            // 关闭当前屏幕的窗口
-                            if (captureStage != null) {
-                                captureStage.close();
+                            // 只有在有选择框的情况下才在新屏幕创建遮罩
+                            if (selectionRect != null) {
+                                debugLog("当前有选择框，在新屏幕创建遮罩");
+                                
+                                // 关闭当前屏幕的窗口
+                                if (captureStage != null) {
+                                    captureStage.close();
+                                }
+
+                                // 清理当前屏幕的资源
+                                cleanupResources();
+
+                                // 更新当前屏幕引用
+                                currentScreen = newScreen;
+
+                                // 在新屏幕创建新的截图窗口
+                                createScreenshotStage(newScreen, null);
+                                
+                                // 重置选择状态，允许在新屏幕重新开始选择
+                                startX = 0;
+                                startY = 0;
+                                endX = 0;
+                                endY = 0;
+                                isMovingSelection = false;
+                                isResizing = false;
+                                resizeDirection = "";
+                            } else {
+                                debugLog("当前没有选择框，不创建新屏幕遮罩");
                             }
-
-                            // 清理当前屏幕的资源
-                            cleanupResources();
-
-                            // 更新当前屏幕引用
-                            currentScreen = newScreen;
-
-                            // 在新屏幕创建新的截图窗口
-                            createScreenshotStage(newScreen, null);
                         }
                     }
                 } catch (Exception e) {
