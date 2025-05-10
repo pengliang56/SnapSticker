@@ -147,7 +147,7 @@ public class ScreenshotSelector {
         if (isOverTaskbar) {
             updateTaskbarMask();
         } else {
-            updateScreenMask();
+            updateScreenMask(false);
         }
     }
 
@@ -209,7 +209,7 @@ public class ScreenshotSelector {
      */
     private void updateTaskbarMask() {
         if (!isTaskbarVisible || taskbarBounds == null) {
-            updateScreenMask();
+            updateScreenMask(false);
             return;
         }
 
@@ -232,7 +232,7 @@ public class ScreenshotSelector {
     /**
      * Update the mask to cover the screen (excluding taskbar)
      */
-    private void updateScreenMask() {
+    private void updateScreenMask(boolean ignoreTaskbar) {
         // Set base mask to cover entire screen
         fullscreenMask.setX(0);
         fullscreenMask.setY(0);
@@ -240,7 +240,7 @@ public class ScreenshotSelector {
         fullscreenMask.setHeight(currentScreenBounds.getHeight());
 
         // If taskbar is visible, create a cut-out for it
-        if (isTaskbarVisible && taskbarBounds != null) {
+        if (isTaskbarVisible && taskbarBounds != null && !ignoreTaskbar) {
             // Convert taskbar coordinates to scene coordinates
             double taskbarX = taskbarBounds.getMinX() - currentScreenBounds.getMinX();
             double taskbarY = taskbarBounds.getMinY() - currentScreenBounds.getMinY();
@@ -361,6 +361,9 @@ public class ScreenshotSelector {
         scene.setOnMouseDragged(event -> {
             stopMouseTracking();
             if (isSelecting) {
+                // Convert to fullscreen mask when selection starts
+                updateScreenMask(true);
+                
                 endX = event.getScreenX();
                 endY = event.getScreenY();
                 updateSelectionOverlay();
