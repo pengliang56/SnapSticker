@@ -2,6 +2,7 @@ package com.github.sticker.screenshot;
 
 import com.github.sticker.util.ScreenManager;
 import javafx.animation.KeyFrame;
+import javafx.animation.KeyValue;
 import javafx.animation.Timeline;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.CacheHint;
@@ -285,7 +286,63 @@ public class ScreenshotSelector {
     private Group createStyleSelection(Rectangle selectionArea) {
         Group resizeHandles = new Group();
         Color dotColor = Color.rgb(0, 120, 215);
+        Color cornerColor = Color.rgb(0, 255, 0); // Bright green color
 
+        // Create dashed border
+        Rectangle border = new Rectangle();
+        border.setFill(Color.TRANSPARENT);
+        border.setStroke(dotColor);
+        border.setStrokeWidth(4);
+        border.getStrokeDashArray().addAll(5.0, 20.0); // Dashed border
+        border.setMouseTransparent(true);
+        
+        // Bind border to selection area
+        border.xProperty().bind(selectionArea.xProperty());
+        border.yProperty().bind(selectionArea.yProperty());
+        border.widthProperty().bind(selectionArea.widthProperty());
+        border.heightProperty().bind(selectionArea.heightProperty());
+
+        // Create corner dots
+        double dotSize = 8;
+        Rectangle[] corners = new Rectangle[4];
+        for (int i = 0; i < 4; i++) {
+            corners[i] = new Rectangle(dotSize, dotSize);
+            corners[i].setFill(cornerColor);
+            corners[i].setMouseTransparent(true);
+            
+            // Add heartbeat animation
+            Timeline heartbeat = new Timeline(
+                new KeyFrame(Duration.ZERO, new KeyValue(corners[i].scaleXProperty(), 1.0)),
+                new KeyFrame(Duration.ZERO, new KeyValue(corners[i].scaleYProperty(), 1.0)),
+                new KeyFrame(Duration.millis(500), new KeyValue(corners[i].scaleXProperty(), 1.2)),
+                new KeyFrame(Duration.millis(500), new KeyValue(corners[i].scaleYProperty(), 1.2)),
+                new KeyFrame(Duration.millis(1000), new KeyValue(corners[i].scaleXProperty(), 1.0)),
+                new KeyFrame(Duration.millis(1000), new KeyValue(corners[i].scaleYProperty(), 1.0))
+            );
+            heartbeat.setCycleCount(Timeline.INDEFINITE);
+            heartbeat.setAutoReverse(true);
+            heartbeat.play();
+        }
+
+        // Bind corner positions
+        // Top-left
+        corners[0].xProperty().bind(selectionArea.xProperty().subtract(dotSize/2));
+        corners[0].yProperty().bind(selectionArea.yProperty().subtract(dotSize/2));
+        
+        // Top-right
+        corners[1].xProperty().bind(selectionArea.xProperty().add(selectionArea.widthProperty()).subtract(dotSize/2));
+        corners[1].yProperty().bind(selectionArea.yProperty().subtract(dotSize/2));
+        
+        // Bottom-left
+        corners[2].xProperty().bind(selectionArea.xProperty().subtract(dotSize/2));
+        corners[2].yProperty().bind(selectionArea.yProperty().add(selectionArea.heightProperty()).subtract(dotSize/2));
+        
+        // Bottom-right
+        corners[3].xProperty().bind(selectionArea.xProperty().add(selectionArea.widthProperty()).subtract(dotSize/2));
+        corners[3].yProperty().bind(selectionArea.yProperty().add(selectionArea.heightProperty()).subtract(dotSize/2));
+
+        resizeHandles.getChildren().addAll(border);
+        resizeHandles.getChildren().addAll(corners);
 
         return resizeHandles;
     }
