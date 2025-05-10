@@ -400,6 +400,7 @@ public class ScreenshotSelector {
      */
     private void setupMouseHandlers(Scene scene) {
         scene.setOnMousePressed(event -> {
+            scene.setCursor(javafx.scene.Cursor.CROSSHAIR);
             startX = event.getScreenX();
             startY = event.getScreenY();
             isSelecting = true;
@@ -407,7 +408,6 @@ public class ScreenshotSelector {
 
         scene.setOnMouseDragged(event -> {
             stopMouseTracking();
-
             if (isSelecting) {
                 root.setClip(null);
                 updateFullscreen(0, 0, currentScreenBounds.getWidth(), currentScreenBounds.getHeight());
@@ -422,12 +422,25 @@ public class ScreenshotSelector {
         scene.setOnMouseReleased(event -> {
             stopMouseTracking();
             if (isSelecting) {
+                // Reset cursor to default
+                scene.setCursor(javafx.scene.Cursor.DEFAULT);
+                
                 endX = event.getScreenX();
                 endY = event.getScreenY();
                 isSelecting = false;
-                finishSelection();
+                persistSelection();
             }
         });
+    }
+
+    private void persistSelection() {
+//        selectionArea.setX(Math.min(startX, endX));
+//        selectionArea.setY(Math.min(startY, endY));
+//        selectionArea.setWidth(Math.abs(endX - startX));
+//        selectionArea.setHeight(Math.abs(endY - startY));
+
+        // 3. 提升层级到永久容器（关键！）
+        //persistentContainer.getChildren().addAll(selectionArea, resizeHandles);
     }
 
     /**
