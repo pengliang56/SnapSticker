@@ -5,11 +5,13 @@ import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.CacheHint;
+import javafx.scene.Group;
 import javafx.scene.Scene;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.shape.Shape;
+import javafx.scene.shape.StrokeType;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
@@ -32,7 +34,7 @@ public class ScreenshotSelector {
     // Mask layers
     private Rectangle fullscreenMask;        // Base semi-transparent mask
     private Rectangle selectionArea;   // Selection area mask
-    private Rectangle resizeHandles;   // Selection rectangle with border
+    private Group resizeHandles;   // Selection rectangle with border
     private static final double MASK_OPACITY = 0.5;
 
     // Mouse tracking
@@ -184,7 +186,7 @@ public class ScreenshotSelector {
         // Create and add all mask layers
         fullscreenMask = createBaseMask();
         selectionArea = createSelectionMask();
-        resizeHandles = createSelectionRect();
+        resizeHandles = createStyleSelection(selectionArea);
 
         root.getChildren().addAll(fullscreenMask, selectionArea, resizeHandles);
 
@@ -218,15 +220,19 @@ public class ScreenshotSelector {
         double y = taskbarBounds.getMinY() - currentScreenBounds.getMinY();
 
         // Create taskbar mask
-        fullscreenMask.setX(x);
-        fullscreenMask.setY(y);
-        fullscreenMask.setWidth(taskbarBounds.getWidth());
-        fullscreenMask.setHeight(taskbarBounds.getHeight());
+        updateFullscreen(x, y, taskbarBounds.getWidth(), taskbarBounds.getHeight());
 
         // Update the mask in the scene
         Shape mask = Shape.subtract(fullscreenMask, selectionArea);
+        addBorder(mask);
         mask.setFill(Color.color(0, 0, 0, MASK_OPACITY));
         root.getChildren().set(0, mask);
+    }
+
+    private void addBorder(Shape mask) {
+        mask.setStroke(Color.RED);
+        mask.setStrokeWidth(2);
+        mask.setStrokeType(StrokeType.INSIDE);
     }
 
     /**
@@ -234,10 +240,7 @@ public class ScreenshotSelector {
      */
     private void updateScreenMask(boolean ignoreTaskbar) {
         // Set base mask to cover entire screen
-        fullscreenMask.setX(0);
-        fullscreenMask.setY(0);
-        fullscreenMask.setWidth(currentScreenBounds.getWidth());
-        fullscreenMask.setHeight(currentScreenBounds.getHeight());
+        updateFullscreen(0, 0, currentScreenBounds.getWidth(), currentScreenBounds.getHeight());
 
         // If taskbar is visible, create a cut-out for it
         if (isTaskbarVisible && taskbarBounds != null && !ignoreTaskbar) {
@@ -256,11 +259,13 @@ public class ScreenshotSelector {
             // Subtract the taskbar area from the base mask
             Shape mask = Shape.subtract(fullscreenMask, taskbarCutout);
             mask.setFill(Color.color(0, 0, 0, MASK_OPACITY));
+            addBorder(mask);
             root.getChildren().set(0, mask);
         } else {
             // If no taskbar, just use the base mask
             Shape mask = Shape.subtract(fullscreenMask, selectionArea);
             mask.setFill(Color.color(0, 0, 0, MASK_OPACITY));
+            addBorder(mask);
             root.getChildren().set(0, mask);
         }
     }
@@ -277,19 +282,12 @@ public class ScreenshotSelector {
         return mask;
     }
 
-    /**
-     * Create the selection rectangle with border
-     *
-     * @return Rectangle representing the selection border
-     */
-    private Rectangle createSelectionRect() {
-        Rectangle rect = new Rectangle();
-        rect.setFill(Color.TRANSPARENT);
-        rect.setStroke(Color.DODGERBLUE);
-        rect.setStrokeWidth(2);
-        rect.getStrokeDashArray().addAll(10.0, 5.0); // Dashed border
-        rect.setMouseTransparent(true);
-        return rect;
+    private Group createStyleSelection(Rectangle selectionArea) {
+        Group resizeHandles = new Group();
+        Color dotColor = Color.rgb(0, 120, 215);
+
+
+        return resizeHandles;
     }
 
     /**
@@ -303,24 +301,16 @@ public class ScreenshotSelector {
         double height = Math.abs(endY - startY);
 
         // Update all mask layers
-        updateSelectionRect(x, y, width, height);
+//        updateSelectionRect(x, y, width, height);
         updateSelectionMask(x, y, width, height);
-        updateBaseMask();
+        selectClip();
     }
 
-    /**
-     * Update the selection rectangle position and size
-     *
-     * @param x      X coordinate
-     * @param y      Y coordinate
-     * @param width  Width of selection
-     * @param height Height of selection
-     */
-    private void updateSelectionRect(double x, double y, double width, double height) {
-        resizeHandles.setX(x);
-        resizeHandles.setY(y);
-        resizeHandles.setWidth(width);
-        resizeHandles.setHeight(height);
+    private void updateFullscreen(double x, double y, double width, double height) {
+        fullscreenMask.setX(x);
+        fullscreenMask.setY(y);
+        fullscreenMask.setWidth(width);
+        fullscreenMask.setHeight(height);
     }
 
     /**
@@ -341,7 +331,7 @@ public class ScreenshotSelector {
     /**
      * Update the base mask by creating a "cut out" effect
      */
-    private void updateBaseMask() {
+    private void selectClip() {
         Shape clip = Shape.subtract(fullscreenMask, selectionArea);
         root.setClip(clip);
     }
@@ -360,10 +350,12 @@ public class ScreenshotSelector {
 
         scene.setOnMouseDragged(event -> {
             stopMouseTracking();
+
             if (isSelecting) {
-                // Convert to fullscreen mask when selection starts
-                updateScreenMask(true);
-                
+                root.setClip(null);
+                updateFullscreen(0, 0, currentScreenBounds.getWidth(), currentScreenBounds.getHeight());
+                root.getChildren().set(0, fullscreenMask);
+
                 endX = event.getScreenX();
                 endY = event.getScreenY();
                 updateSelectionOverlay();
@@ -424,18 +416,5 @@ public class ScreenshotSelector {
      */
     public void cancelSelection() {
         cleanup();
-    }
-
-    /**
-     * Get the selected area bounds
-     *
-     * @return Rectangle2D representing the selected area
-     */
-    public Rectangle2D getSelectedArea() {
-        double x = Math.min(startX, endX);
-        double y = Math.min(startY, endY);
-        double width = Math.abs(endX - startX);
-        double height = Math.abs(endY - startY);
-        return new Rectangle2D(x, y, width, height);
     }
 } 
