@@ -1,0 +1,420 @@
+package com.github.sticker.screenshot;
+
+import com.github.sticker.util.ScreenManager;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
+import javafx.geometry.Rectangle2D;
+import javafx.scene.Scene;
+import javafx.scene.layout.Pane;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Rectangle;
+import javafx.scene.shape.Shape;
+import javafx.stage.Screen;
+import javafx.stage.Stage;
+import javafx.stage.StageStyle;
+import javafx.util.Duration;
+
+import java.awt.*;
+
+/**
+ * Handles the screenshot area selection functionality.
+ * Creates a transparent overlay window for selecting the screenshot area.
+ */
+public class ScreenshotSelector {
+    private final ScreenManager screenManager;
+    private Stage selectorStage;
+    private Pane root;
+    private double startX, startY;
+    private double endX, endY;
+    private boolean isSelecting = false;
+
+    // Mask layers
+    private Rectangle fullscreenMask;        // Base semi-transparent mask
+    private Rectangle selectionArea;   // Selection area mask
+    private Rectangle resizeHandles;   // Selection rectangle with border
+    private static final double MASK_OPACITY = 0.5;
+
+    // Mouse tracking
+    private Timeline mouseTracker;
+    private static final Duration TRACK_INTERVAL = Duration.millis(100);
+
+    // Screen and taskbar bounds
+    private Rectangle2D currentScreenBounds;
+    private Rectangle2D taskbarBounds;
+    private boolean isTaskbarVisible;
+    private Screen currentScreen;      // Track current screen
+
+    /**
+     * Constructor for ScreenshotSelector
+     *
+     * @param screenManager The screen manager instance to handle screen-related operations
+     */
+    public ScreenshotSelector(ScreenManager screenManager) {
+        this.screenManager = screenManager;
+    }
+
+    /**
+     * Start the screenshot selection process
+     * Creates a transparent overlay window on the current screen
+     */
+    public void startSelection() {
+        // Reset selection state
+        isSelecting = true;
+
+        // 1. Get current screen and mouse position
+        currentScreen = screenManager.getCurrentScreen();
+        currentScreenBounds = currentScreen.getBounds();
+
+        // 2. Check taskbar status
+        isTaskbarVisible = screenManager.isTaskbarVisible();
+        taskbarBounds = screenManager.getTaskbarBounds();
+
+        // 3. Create and configure the stage
+        selectorStage = new Stage();
+        selectorStage.initStyle(StageStyle.TRANSPARENT);
+        selectorStage.setAlwaysOnTop(true);
+
+        // Create the root pane
+        root = new Pane();
+        root.setStyle("-fx-background-color: transparent;");
+
+        // Create the scene with screen dimensions
+        Scene scene = new Scene(root, currentScreenBounds.getWidth(), currentScreenBounds.getHeight());
+        scene.setFill(Color.TRANSPARENT);
+
+        // Position the stage on the screen
+        selectorStage.setX(currentScreenBounds.getMinX());
+        selectorStage.setY(currentScreenBounds.getMinY());
+        selectorStage.setScene(scene);
+
+        // 4. Initialize mask layers
+        initializeMaskLayers();
+
+        // 5. Set up event handlers
+        setupMouseHandlers(scene);
+        setupKeyboardHandlers(scene);
+
+        // 6. Show the stage and start tracking
+        selectorStage.show();
+        initializeMouseTracking();
+    }
+
+    /**
+     * Initialize mouse tracking functionality
+     */
+    private void initializeMouseTracking() {
+        mouseTracker = new Timeline(
+                new KeyFrame(TRACK_INTERVAL, event -> updateMaskBasedOnMousePosition())
+        );
+        mouseTracker.setCycleCount(Timeline.INDEFINITE);
+        mouseTracker.play();
+    }
+
+    /**
+     * Update the mask based on current mouse position
+     */
+    private void updateMaskBasedOnMousePosition() {
+        Point mousePosition = MouseInfo.getPointerInfo().getLocation();
+        double mouseX = mousePosition.getX();
+        double mouseY = mousePosition.getY();
+
+        // Check if mouse has moved to a different screen
+        Screen newScreen = screenManager.getCurrentScreen();
+        if (newScreen != currentScreen) {
+            // Mouse has moved to a different screen, reinitialize the selector
+            cleanup();
+            startSelection();
+            return;
+        }
+
+        // Check if mouse is over taskbar
+        boolean isOverTaskbar = isTaskbarVisible && taskbarBounds != null &&
+                taskbarBounds.contains(mouseX, mouseY);
+
+        // Update mask based on mouse position
+        if (isOverTaskbar) {
+            updateTaskbarMask();
+        } else {
+            updateScreenMask();
+        }
+    }
+
+    /**
+     * Clean up resources before reinitializing
+     */
+    private void cleanup() {
+        if (mouseTracker != null) {
+            mouseTracker.stop();
+            mouseTracker = null;
+        }
+        if (selectorStage != null) {
+            selectorStage.close();
+            selectorStage = null;
+        }
+        if (root != null) {
+            root.getChildren().clear();
+            root = null;
+        }
+        fullscreenMask = null;
+        selectionArea = null;
+        resizeHandles = null;
+        isSelecting = false;
+    }
+
+    /**
+     * Initialize all mask layers for the screenshot selection
+     */
+    private void initializeMaskLayers() {
+        // Create and add all mask layers
+        fullscreenMask = createBaseMask();
+        selectionArea = createSelectionMask();
+        resizeHandles = createSelectionRect();
+
+        root.getChildren().addAll(fullscreenMask, selectionArea, resizeHandles);
+
+        // Initial mask update based on mouse position
+        updateMaskBasedOnMousePosition();
+    }
+
+    /**
+     * Create the base semi-transparent mask
+     *
+     * @return Rectangle representing the base mask
+     */
+    private Rectangle createBaseMask() {
+        Rectangle mask = new Rectangle();
+        mask.setFill(Color.color(0, 0, 0, MASK_OPACITY));
+        mask.setMouseTransparent(false);
+        return mask;
+    }
+
+    /**
+     * Update the mask to cover the taskbar
+     */
+    private void updateTaskbarMask() {
+        if (!isTaskbarVisible || taskbarBounds == null) {
+            updateScreenMask();
+            return;
+        }
+
+        // Convert screen coordinates to scene coordinates
+        double x = taskbarBounds.getMinX() - currentScreenBounds.getMinX();
+        double y = taskbarBounds.getMinY() - currentScreenBounds.getMinY();
+
+        // Create taskbar mask
+        fullscreenMask.setX(x);
+        fullscreenMask.setY(y);
+        fullscreenMask.setWidth(taskbarBounds.getWidth());
+        fullscreenMask.setHeight(taskbarBounds.getHeight());
+
+        // Update the mask in the scene
+        Shape mask = Shape.subtract(fullscreenMask, selectionArea);
+        mask.setFill(Color.color(0, 0, 0, MASK_OPACITY));
+        root.getChildren().set(0, mask);
+    }
+
+    /**
+     * Update the mask to cover the screen (excluding taskbar)
+     */
+    private void updateScreenMask() {
+        // Set base mask to cover entire screen
+        fullscreenMask.setX(0);
+        fullscreenMask.setY(0);
+        fullscreenMask.setWidth(currentScreenBounds.getWidth());
+        fullscreenMask.setHeight(currentScreenBounds.getHeight());
+
+        // If taskbar is visible, create a cut-out for it
+        if (isTaskbarVisible && taskbarBounds != null) {
+            // Convert taskbar coordinates to scene coordinates
+            double taskbarX = taskbarBounds.getMinX() - currentScreenBounds.getMinX();
+            double taskbarY = taskbarBounds.getMinY() - currentScreenBounds.getMinY();
+
+            // Create a cut-out for the taskbar
+            Rectangle taskbarCutout = new Rectangle(
+                    taskbarX,
+                    taskbarY,
+                    taskbarBounds.getWidth(),
+                    taskbarBounds.getHeight()
+            );
+
+            // Subtract the taskbar area from the base mask
+            Shape mask = Shape.subtract(fullscreenMask, taskbarCutout);
+            mask.setFill(Color.color(0, 0, 0, MASK_OPACITY));
+            root.getChildren().set(0, mask);
+        } else {
+            // If no taskbar, just use the base mask
+            Shape mask = Shape.subtract(fullscreenMask, selectionArea);
+            mask.setFill(Color.color(0, 0, 0, MASK_OPACITY));
+            root.getChildren().set(0, mask);
+        }
+    }
+
+    /**
+     * Create the selection area mask
+     *
+     * @return Rectangle representing the selection mask
+     */
+    private Rectangle createSelectionMask() {
+        Rectangle mask = new Rectangle();
+        mask.setFill(Color.WHITE);
+        mask.setMouseTransparent(true);
+        return mask;
+    }
+
+    /**
+     * Create the selection rectangle with border
+     *
+     * @return Rectangle representing the selection border
+     */
+    private Rectangle createSelectionRect() {
+        Rectangle rect = new Rectangle();
+        rect.setFill(Color.TRANSPARENT);
+        rect.setStroke(Color.DODGERBLUE);
+        rect.setStrokeWidth(2);
+        rect.getStrokeDashArray().addAll(10.0, 5.0); // Dashed border
+        rect.setMouseTransparent(true);
+        return rect;
+    }
+
+    /**
+     * Update the selection overlay during dragging
+     */
+    private void updateSelectionOverlay() {
+        // Calculate selection bounds
+        double x = Math.min(startX, endX);
+        double y = Math.min(startY, endY);
+        double width = Math.abs(endX - startX);
+        double height = Math.abs(endY - startY);
+
+        // Update all mask layers
+        updateSelectionRect(x, y, width, height);
+        updateSelectionMask(x, y, width, height);
+        updateBaseMask();
+    }
+
+    /**
+     * Update the selection rectangle position and size
+     *
+     * @param x      X coordinate
+     * @param y      Y coordinate
+     * @param width  Width of selection
+     * @param height Height of selection
+     */
+    private void updateSelectionRect(double x, double y, double width, double height) {
+        resizeHandles.setX(x);
+        resizeHandles.setY(y);
+        resizeHandles.setWidth(width);
+        resizeHandles.setHeight(height);
+    }
+
+    /**
+     * Update the selection mask position and size
+     *
+     * @param x      X coordinate
+     * @param y      Y coordinate
+     * @param width  Width of selection
+     * @param height Height of selection
+     */
+    private void updateSelectionMask(double x, double y, double width, double height) {
+        selectionArea.setX(x);
+        selectionArea.setY(y);
+        selectionArea.setWidth(width);
+        selectionArea.setHeight(height);
+    }
+
+    /**
+     * Update the base mask by creating a "cut out" effect
+     */
+    private void updateBaseMask() {
+        Shape clip = Shape.subtract(fullscreenMask, selectionArea);
+        root.setClip(clip);
+    }
+
+    /**
+     * Set up mouse event handlers for the selection process
+     *
+     * @param scene The scene to attach the handlers to
+     */
+    private void setupMouseHandlers(Scene scene) {
+        scene.setOnMousePressed(event -> {
+            startX = event.getScreenX();
+            startY = event.getScreenY();
+            isSelecting = true;
+        });
+
+        scene.setOnMouseDragged(event -> {
+            if (isSelecting) {
+                endX = event.getScreenX();
+                endY = event.getScreenY();
+                updateSelectionOverlay();
+            }
+        });
+
+        scene.setOnMouseReleased(event -> {
+            if (isSelecting) {
+                endX = event.getScreenX();
+                endY = event.getScreenY();
+                isSelecting = false;
+                finishSelection();
+            }
+        });
+    }
+
+    /**
+     * Set up keyboard event handlers
+     *
+     * @param scene The scene to attach the handlers to
+     */
+    private void setupKeyboardHandlers(Scene scene) {
+        scene.setOnKeyPressed(event -> {
+            switch (event.getCode()) {
+                case ESCAPE:
+                    cancelSelection();
+                    break;
+                case ENTER:
+                    if (!isSelecting) {
+                        finishSelection();
+                    }
+                    break;
+            }
+        });
+    }
+
+    /**
+     * Finish the selection process and capture the selected area
+     */
+    private void finishSelection() {
+        cleanup();
+        // The actual screenshot capture will be implemented here
+    }
+
+    /**
+     * Check if screenshot selection is in progress
+     *
+     * @return true if selection is active, false otherwise
+     */
+    public boolean isSelecting() {
+        return isSelecting;
+    }
+
+    /**
+     * Cancel the screenshot selection process
+     * Cleans up resources and closes the selection window
+     */
+    public void cancelSelection() {
+        cleanup();
+    }
+
+    /**
+     * Get the selected area bounds
+     *
+     * @return Rectangle2D representing the selected area
+     */
+    public Rectangle2D getSelectedArea() {
+        double x = Math.min(startX, endX);
+        double y = Math.min(startY, endY);
+        double width = Math.abs(endX - startX);
+        double height = Math.abs(endY - startY);
+        return new Rectangle2D(x, y, width, height);
+    }
+} 
