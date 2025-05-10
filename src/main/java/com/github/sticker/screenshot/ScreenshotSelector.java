@@ -36,7 +36,7 @@ public class ScreenshotSelector {
 
     // Mouse tracking
     private Timeline mouseTracker;
-    private static final Duration TRACK_INTERVAL = Duration.millis(100);
+    private static final Duration TRACK_INTERVAL = Duration.millis(16); // ~60fps
 
     // Screen and taskbar bounds
     private Rectangle2D currentScreenBounds;
@@ -139,14 +139,18 @@ public class ScreenshotSelector {
         }
     }
 
-    /**
-     * Clean up resources before reinitializing
-     */
-    private void cleanup() {
+    public void stopMouseTracking() {
         if (mouseTracker != null) {
             mouseTracker.stop();
             mouseTracker = null;
         }
+    }
+
+    /**
+     * Clean up resources before reinitializing
+     */
+    private void cleanup() {
+        stopMouseTracking();
         if (selectorStage != null) {
             selectorStage.close();
             selectorStage = null;
@@ -343,6 +347,7 @@ public class ScreenshotSelector {
         });
 
         scene.setOnMouseDragged(event -> {
+            stopMouseTracking();
             if (isSelecting) {
                 endX = event.getScreenX();
                 endY = event.getScreenY();
@@ -351,6 +356,7 @@ public class ScreenshotSelector {
         });
 
         scene.setOnMouseReleased(event -> {
+            stopMouseTracking();
             if (isSelecting) {
                 endX = event.getScreenX();
                 endY = event.getScreenY();
