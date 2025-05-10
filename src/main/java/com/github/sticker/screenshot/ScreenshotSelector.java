@@ -73,7 +73,7 @@ public class ScreenshotSelector {
         initRootPane();
 
         // Create and configure the stage
-        Scene scene = initScene();
+        Scene scene = initSceneAndSelectorStage();
 
         // Initialize mask layers
         initializeMaskLayers();
@@ -82,8 +82,6 @@ public class ScreenshotSelector {
         setupMouseHandlers(scene);
         setupKeyboardHandlers(scene);
 
-        // Show the stage and start tracking
-        selectorStage.show();
         initializeMouseTracking();
     }
 
@@ -94,7 +92,7 @@ public class ScreenshotSelector {
         root.setStyle("-fx-background-color: transparent;");
     }
 
-    private Scene initScene() {
+    private Scene initSceneAndSelectorStage() {
         selectorStage = new Stage();
         selectorStage.initStyle(StageStyle.TRANSPARENT);
         selectorStage.setAlwaysOnTop(true);
@@ -107,6 +105,9 @@ public class ScreenshotSelector {
         selectorStage.setX(currentScreenBounds.getMinX());
         selectorStage.setY(currentScreenBounds.getMinY());
         selectorStage.setScene(scene);
+
+        // Show the stage and start tracking
+        selectorStage.show();
         return scene;
     }
 
