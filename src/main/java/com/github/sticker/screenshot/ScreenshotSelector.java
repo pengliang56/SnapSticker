@@ -4,6 +4,7 @@ import com.github.sticker.util.ScreenManager;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.geometry.Rectangle2D;
+import javafx.scene.CacheHint;
 import javafx.scene.Scene;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
@@ -61,22 +62,42 @@ public class ScreenshotSelector {
         // Reset selection state
         isSelecting = true;
 
-        // 1. Get current screen and mouse position
+        // Get current screen and mouse position
         currentScreen = screenManager.getCurrentScreen();
         currentScreenBounds = currentScreen.getBounds();
 
-        // 2. Check taskbar status
+        // Check taskbar status
         isTaskbarVisible = screenManager.isTaskbarVisible();
         taskbarBounds = screenManager.getTaskbarBounds();
 
-        // 3. Create and configure the stage
+        initRootPane();
+
+        // Create and configure the stage
+        Scene scene = initScene();
+
+        // Initialize mask layers
+        initializeMaskLayers();
+
+        // Set up event handlers
+        setupMouseHandlers(scene);
+        setupKeyboardHandlers(scene);
+
+        // Show the stage and start tracking
+        selectorStage.show();
+        initializeMouseTracking();
+    }
+
+    private void initRootPane() {
+        root = new Pane();
+        root.setCache(true);
+        root.setCacheHint(CacheHint.SPEED);
+        root.setStyle("-fx-background-color: transparent;");
+    }
+
+    private Scene initScene() {
         selectorStage = new Stage();
         selectorStage.initStyle(StageStyle.TRANSPARENT);
         selectorStage.setAlwaysOnTop(true);
-
-        // Create the root pane
-        root = new Pane();
-        root.setStyle("-fx-background-color: transparent;");
 
         // Create the scene with screen dimensions
         Scene scene = new Scene(root, currentScreenBounds.getWidth(), currentScreenBounds.getHeight());
@@ -86,17 +107,7 @@ public class ScreenshotSelector {
         selectorStage.setX(currentScreenBounds.getMinX());
         selectorStage.setY(currentScreenBounds.getMinY());
         selectorStage.setScene(scene);
-
-        // 4. Initialize mask layers
-        initializeMaskLayers();
-
-        // 5. Set up event handlers
-        setupMouseHandlers(scene);
-        setupKeyboardHandlers(scene);
-
-        // 6. Show the stage and start tracking
-        selectorStage.show();
-        initializeMouseTracking();
+        return scene;
     }
 
     /**
