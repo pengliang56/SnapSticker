@@ -216,6 +216,8 @@ public class ScreenshotSelector {
         drawCanvasArea.setLayoutY(0);
         drawCanvasArea.setStyle("-fx-border-color: green;");
         drawCanvasArea.setPrefSize(currentScreenBounds.getWidth(), currentScreenBounds.getHeight());
+        // 确保绘图画布不会阻挡工具栏的事件
+        drawCanvasArea.setMouseTransparent(true);
     }
 
     /**
@@ -464,29 +466,7 @@ public class ScreenshotSelector {
             if (floatingToolbar != null) {
                 root.getChildren().remove(floatingToolbar.getToolbar());
             }
-            floatingToolbar = new FloatingToolbar(selectionBorder, root);
-
-            // 设置绘图画布
-            DrawCanvas drawCanvas = floatingToolbar.getDrawCanvas();
-            drawCanvas.setLayoutX(selectionBorder.getX());
-            drawCanvas.setLayoutY(selectionBorder.getY());
-            drawCanvas.setPrefWidth(selectionBorder.getWidth());
-            drawCanvas.setPrefHeight(selectionBorder.getHeight());
-            root.getChildren().add(drawCanvas);
-
-            // 监听选择区域的变化，同步更新画布位置和大小
-            selectionBorder.xProperty().addListener((obs, oldVal, newVal) -> {
-                drawCanvas.setLayoutX(newVal.doubleValue());
-            });
-            selectionBorder.yProperty().addListener((obs, oldVal, newVal) -> {
-                drawCanvas.setLayoutY(newVal.doubleValue());
-            });
-            selectionBorder.widthProperty().addListener((obs, oldVal, newVal) -> {
-                drawCanvas.setPrefWidth(newVal.doubleValue());
-            });
-            selectionBorder.heightProperty().addListener((obs, oldVal, newVal) -> {
-                drawCanvas.setPrefHeight(newVal.doubleValue());
-            });
+            floatingToolbar = new FloatingToolbar(selectionBorder, root, drawCanvasArea);
 
             // 设置拖动处理器
             setupDragHandlers();

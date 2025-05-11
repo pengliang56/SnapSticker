@@ -2,7 +2,6 @@ package com.github.sticker.draw;
 
 import javafx.animation.FadeTransition;
 import javafx.beans.binding.Bindings;
-import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Tooltip;
@@ -38,8 +37,8 @@ public class FloatingToolbar {
     private final DrawCanvas drawCanvas;
     private Button activeButton;
 
-    public FloatingToolbar(Rectangle selectionArea, Pane parentContainer) {
-        this.drawCanvas = new DrawCanvas(parentContainer);
+    public FloatingToolbar(Rectangle selectionArea, Pane parentContainer, DrawCanvas drawCanvasArea) {
+        this.drawCanvas = drawCanvasArea;
         this.selectionArea = selectionArea;
         this.parentContainer = parentContainer;
         initializeToolbar();
