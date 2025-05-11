@@ -2,13 +2,9 @@ package com.github.sticker.screenshot;
 
 import com.github.sticker.draw.DrawCanvas;
 import com.github.sticker.draw.FloatingToolbar;
-import com.github.sticker.draw.OperationMode;
 import com.github.sticker.util.ScreenManager;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
-import javafx.application.Platform;
-import javafx.beans.property.ObjectProperty;
-import javafx.beans.property.SimpleObjectProperty;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.CacheHint;
 import javafx.scene.Scene;
@@ -60,6 +56,7 @@ public class ScreenshotSelector {
     private String resizeDirection = ""; // 记录调整方向：n, s, e, w, ne, nw, se, sw
 
     private FloatingToolbar floatingToolbar;
+
     /**
      * Constructor for ScreenshotSelector
      *
@@ -204,7 +201,7 @@ public class ScreenshotSelector {
         selectionArea = createSelectionMask();
         selectionBorder = createSelectionBorder();
         createDrawCanvsaArea();
-        root.getChildren().addAll(fullscreenMask, selectionArea,drawCanvasArea, selectionBorder);
+        root.getChildren().addAll(fullscreenMask, selectionArea, drawCanvasArea, selectionBorder);
 
         // Initial mask update based on mouse position
         updateMaskBasedOnMousePosition();
@@ -461,15 +458,12 @@ public class ScreenshotSelector {
             isSelecting = false;
 
             updateSelectionAreaPosition();
+            setupDragHandlers();
 
-            // 创建新工具栏
             if (floatingToolbar != null) {
                 root.getChildren().remove(floatingToolbar.getToolbar());
             }
             floatingToolbar = new FloatingToolbar(selectionBorder, root, drawCanvasArea);
-
-            // 设置拖动处理器
-            setupDragHandlers();
         }
     }
 
