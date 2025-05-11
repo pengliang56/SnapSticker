@@ -42,6 +42,7 @@ public class ScreenshotSelector {
     private Rectangle fullscreenMask;        // Base semi-transparent mask
     private Rectangle selectionArea;   // Selection area mask
     private Rectangle selectionBorder; // Visual border for selection area
+    private DrawCanvas drawCanvasArea; // Visual border for selection area
     private static final double MASK_OPACITY = 0.5;
 
     // Mouse tracking
@@ -202,11 +203,19 @@ public class ScreenshotSelector {
         fullscreenMask = createBaseMask();
         selectionArea = createSelectionMask();
         selectionBorder = createSelectionBorder();
-
-        root.getChildren().addAll(fullscreenMask, selectionArea, selectionBorder);
+        createDrawCanvsaArea();
+        root.getChildren().addAll(fullscreenMask, selectionArea,drawCanvasArea, selectionBorder);
 
         // Initial mask update based on mouse position
         updateMaskBasedOnMousePosition();
+    }
+
+    private void createDrawCanvsaArea() {
+        drawCanvasArea = new DrawCanvas(root);
+        drawCanvasArea.setLayoutX(0);
+        drawCanvasArea.setLayoutY(0);
+        drawCanvasArea.setStyle("-fx-border-color: green;");
+        drawCanvasArea.setPrefSize(currentScreenBounds.getWidth(), currentScreenBounds.getHeight());
     }
 
     /**
@@ -406,9 +415,10 @@ public class ScreenshotSelector {
         // Update the base mask with the clip
         root.getChildren().set(0, clip);
 
-        // Ensure selection area is on top and not affected by the clip
-        root.getChildren().set(1, selectionArea);
-        root.getChildren().set(2, selectionBorder);
+//        // Ensure selection area is on top and not affected by the clip
+//        root.getChildren().set(1, selectionArea);
+//        root.getChildren().set(2, drawCanvasArea);
+//        root.getChildren().set(3, selectionBorder);
     }
 
     /**
@@ -450,15 +460,36 @@ public class ScreenshotSelector {
 
             updateSelectionAreaPosition();
 
-            setupDragHandlers();
-
-            // init floating toolbar
+            // 创建新工具栏
             if (floatingToolbar != null) {
                 root.getChildren().remove(floatingToolbar.getToolbar());
             }
-
-            // 创建新工具栏
             floatingToolbar = new FloatingToolbar(selectionBorder, root);
+
+            // 设置绘图画布
+            DrawCanvas drawCanvas = floatingToolbar.getDrawCanvas();
+            drawCanvas.setLayoutX(selectionBorder.getX());
+            drawCanvas.setLayoutY(selectionBorder.getY());
+            drawCanvas.setPrefWidth(selectionBorder.getWidth());
+            drawCanvas.setPrefHeight(selectionBorder.getHeight());
+            root.getChildren().add(drawCanvas);
+
+            // 监听选择区域的变化，同步更新画布位置和大小
+            selectionBorder.xProperty().addListener((obs, oldVal, newVal) -> {
+                drawCanvas.setLayoutX(newVal.doubleValue());
+            });
+            selectionBorder.yProperty().addListener((obs, oldVal, newVal) -> {
+                drawCanvas.setLayoutY(newVal.doubleValue());
+            });
+            selectionBorder.widthProperty().addListener((obs, oldVal, newVal) -> {
+                drawCanvas.setPrefWidth(newVal.doubleValue());
+            });
+            selectionBorder.heightProperty().addListener((obs, oldVal, newVal) -> {
+                drawCanvas.setPrefHeight(newVal.doubleValue());
+            });
+
+            // 设置拖动处理器
+            setupDragHandlers();
         }
     }
 

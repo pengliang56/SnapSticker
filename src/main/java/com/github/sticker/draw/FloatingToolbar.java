@@ -218,6 +218,10 @@ public class FloatingToolbar {
         return toolbar;
     }
 
+    public DrawCanvas getDrawCanvas() {
+        return drawCanvas;
+    }
+
     private void handleToolButtonClick(Button clickedBtn, DrawMode targetMode) {
         // 如果点击的是已激活按钮
         if (drawCanvas.getCurrentDrawMode() == targetMode) {

@@ -1,6 +1,7 @@
 package com.github.sticker.draw;
 
 import javafx.scene.Node;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.LineTo;
@@ -20,6 +21,7 @@ public class DrawCanvas extends Pane {
     private final Stack<Node> redoStack = new Stack<>();
 
     public DrawCanvas(Pane parentContainer) {
+        deactivateCurrentTool();
         this.setPickOnBounds(true);
         this.setStyle("-fx-background-color: transparent;");
     }
@@ -94,6 +96,25 @@ public class DrawCanvas extends Pane {
         return currentMode;
     }
 
+    public void activateTool(DrawMode mode) {
+        deactivateCurrentTool(); // 先清理旧状态
+        currentMode = mode;
+        this.setMouseTransparent(false);
+
+        switch (mode) {
+            case PEN -> {
+                System.out.println("初始化画笔配置");
+                setupPenTool();
+            }
+            case RECTANGLE -> setupRectTool();
+            case NONE -> {} // 无操作
+        }
+        // 激活绘图模式时，禁用选择区域的鼠标事件
+        if (getParent() != null) {
+            getParent().setMouseTransparent(true);
+        }
+    }
+
     public void deactivateCurrentTool() {
         currentMode = DrawMode.NONE;
 
@@ -114,7 +135,13 @@ public class DrawCanvas extends Pane {
 
         // 允许事件穿透
         this.setMouseTransparent(true);
+        
+        // 禁用绘图模式时，启用选择区域的鼠标事件
+        if (getParent() != null) {
+            getParent().setMouseTransparent(false);
+        }
     }
+
     private void cleanupTempShapes() {
         // 清理未完成的临时图形
         if (tempRect != null && this.getChildren().contains(tempRect)) {
@@ -124,20 +151,7 @@ public class DrawCanvas extends Pane {
             this.getChildren().remove(currentPath);
         }
     }
-    public void activateTool(DrawMode mode) {
-        deactivateCurrentTool(); // 先清理旧状态
-        currentMode = mode;
-        this.setMouseTransparent(false);
 
-        switch (mode) {
-            case PEN -> {
-                System.out.println("初始化画笔配置");
-                setupPenTool();
-            }
-            case RECTANGLE -> setupRectangleTool();
-            case NONE -> {} // 无操作
-        }
-    }
     // ==== 具体工具配置 ====
     private void setupPenTool() {
         currentPath = new Path();
@@ -158,7 +172,7 @@ public class DrawCanvas extends Pane {
         });
     }
 
-    private void setupRectangleTool() {
+    private void setupRectTool() {
         tempRect = new Rectangle();
         tempRect.setStroke(strokeColor);
         tempRect.setFill(Color.TRANSPARENT);
