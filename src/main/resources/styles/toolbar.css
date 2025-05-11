@@ -1,0 +1,19 @@
+.tool-button {
+    -fx-background-color: #424242;
+    -fx-background-radius: 4;
+    -fx-min-width: 32;
+    -fx-min-height: 32;
+    -fx-cursor: hand;
+    -fx-border-width: 0;
+}
+
+.tool-button:hover {
+    -fx-background-color: #535353;
+}
+
+.tool-button.active {
+    -fx-background-color: #616161;
+    -fx-border-color: #2196F3;
+    -fx-border-width: 2;
+    -fx-border-radius: 4;
+}
