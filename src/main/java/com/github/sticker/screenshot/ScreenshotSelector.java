@@ -245,7 +245,6 @@ public class ScreenshotSelector {
         Rectangle mask = new Rectangle();
         mask.setFill(Color.color(0, 0, 0, MASK_OPACITY));
         mask.setMouseTransparent(false);
-//        mask.setOnMouseClicked(this::handleMaskClick);
         return mask;
     }
 
@@ -253,6 +252,7 @@ public class ScreenshotSelector {
      * 处理遮罩点击事件
      */
     private void handleMaskClick(javafx.scene.input.MouseEvent event) {
+        System.out.println("handleMaskClick(javafx.scene.input.MouseEvent event) ");
         if (!isSelecting && selectionArea != null) {
             double clickX = event.getScreenX();
             double clickY = event.getScreenY();
@@ -418,20 +418,9 @@ public class ScreenshotSelector {
      * Update the base mask by creating a "cut out" effect
      */
     private void selectClip() {
-        // Create a clip shape that only affects the base mask
         Shape clip = Shape.subtract(fullscreenMask, selectionArea);
         clip.setFill(Color.color(0, 0, 0, MASK_OPACITY));
-
-        // 复制点击事件到新的遮罩
-        clip.setOnMouseClicked(this::handleMaskClick);
-
-        // Update the base mask with the clip
         root.getChildren().set(0, clip);
-
-//        // Ensure selection area is on top and not affected by the clip
-//        root.getChildren().set(1, selectionArea);
-//        root.getChildren().set(2, drawCanvasArea);
-//        root.getChildren().set(3, selectionBorder);
     }
 
     /**
@@ -543,8 +532,8 @@ public class ScreenshotSelector {
         Rectangle bottomRightArea = new Rectangle();
 
         dragAreas.addAll(Arrays.asList(
-                topArea, bottomArea, leftArea, rightArea,
-                topLeftArea, topRightArea, bottomLeftArea, bottomRightArea
+            topArea, bottomArea, leftArea, rightArea,
+            topLeftArea, topRightArea, bottomLeftArea, bottomRightArea
         ));
 
         // 设置检测区域为透明
@@ -633,35 +622,41 @@ public class ScreenshotSelector {
         updateAreas.accept(selectionBorder);
 
         // 设置选择区域的拖动事件
-        EventHandler<MouseEvent> borderPressedHandler = e -> {
+        selectionBorder.setOnMousePressed(e -> {
             if (!isResizing) {
                 dragDelta[0] = e.getSceneX() - selectionBorder.getX();
                 dragDelta[1] = e.getSceneY() - selectionBorder.getY();
                 selectionBorder.getScene().setCursor(MOVE);
             }
             e.consume();
-        };
+        });
 
-        EventHandler<MouseEvent> borderDraggedHandler = e -> {
+        selectionBorder.setOnMouseDragged(e -> {
             if (!isResizing) {
-                handleResize(e, dragDelta);
+                handleDrag(e, dragDelta);
             }
             e.consume();
-        };
+        });
 
-        EventHandler<MouseEvent> borderReleasedHandler = e -> {
+        selectionBorder.setOnMouseReleased(e -> {
             isResizing = false;
             resizeDirection = "";
             selectionBorder.getScene().setCursor(DEFAULT);
             e.consume();
-        };
+        });
 
-        selectionBorder.setOnMousePressed(borderPressedHandler);
-        selectionBorder.setOnMouseDragged(borderDraggedHandler);
-        selectionBorder.setOnMouseReleased(borderReleasedHandler);
+        // 设置选择区域的鼠标进入/退出事件
+        selectionBorder.setOnMouseEntered(e -> {
+            if (!isResizing) {
+                selectionBorder.getScene().setCursor(MOVE);
+            }
+        });
 
-        // 重新设置遮罩点击事件
-        selectClip();
+        selectionBorder.setOnMouseExited(e -> {
+            if (!isResizing) {
+                selectionBorder.getScene().setCursor(DEFAULT);
+            }
+        });
     }
 
     public void removeDragHandlers() {
