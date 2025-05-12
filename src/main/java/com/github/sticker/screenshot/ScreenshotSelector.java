@@ -5,9 +5,12 @@ import com.github.sticker.draw.FloatingToolbar;
 import com.github.sticker.util.ScreenManager;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
+import javafx.beans.value.ChangeListener;
+import javafx.event.EventHandler;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.CacheHint;
 import javafx.scene.Scene;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
@@ -19,8 +22,14 @@ import javafx.stage.StageStyle;
 import javafx.util.Duration;
 
 import java.awt.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
+
+import static javafx.scene.Cursor.DEFAULT;
+import static javafx.scene.Cursor.MOVE;
 
 /**
  * Handles the screenshot area selection functionality.
@@ -56,6 +65,14 @@ public class ScreenshotSelector {
     private String resizeDirection = ""; // 记录调整方向：n, s, e, w, ne, nw, se, sw
 
     private FloatingToolbar floatingToolbar;
+
+
+    //  /////////////////////////////////////////////////////////////////
+
+    private final List<Rectangle> dragAreas = new ArrayList<>();
+    private final List<ChangeListener<Number>> borderListeners = new ArrayList<>();
+
+    //  /////////////////////////////////////////////////////////////////
 
     /**
      * Constructor for ScreenshotSelector
@@ -176,7 +193,7 @@ public class ScreenshotSelector {
     /**
      * Clean up resources before reinitializing
      */
-    private void cleanup() {
+    public void cleanup() {
         stopMouseTracking();
         if (selectorStage != null) {
             selectorStage.close();
@@ -189,7 +206,10 @@ public class ScreenshotSelector {
         fullscreenMask = null;
         selectionArea = null;
         selectionBorder = null;
+        drawCanvasArea = null;
         isSelecting = false;
+        isResizing = false;
+        resizeDirection = "";
     }
 
     /**
@@ -211,7 +231,6 @@ public class ScreenshotSelector {
         drawCanvasArea = new DrawCanvas(root);
         drawCanvasArea.setLayoutX(0);
         drawCanvasArea.setLayoutY(0);
-        drawCanvasArea.setStyle("-fx-border-color: green;");
         drawCanvasArea.setPrefSize(currentScreenBounds.getWidth(), currentScreenBounds.getHeight());
         // 确保绘图画布不会阻挡工具栏的事件
         drawCanvasArea.setMouseTransparent(true);
@@ -226,10 +245,7 @@ public class ScreenshotSelector {
         Rectangle mask = new Rectangle();
         mask.setFill(Color.color(0, 0, 0, MASK_OPACITY));
         mask.setMouseTransparent(false);
-        System.out.println("4Selection area: " + selectionArea);
-        // 添加点击事件处理
-        mask.setOnMouseClicked(this::handleMaskClick);
-        System.out.println("5Selection area: " + selectionArea);
+//        mask.setOnMouseClicked(this::handleMaskClick);
         return mask;
     }
 
@@ -238,7 +254,6 @@ public class ScreenshotSelector {
      */
     private void handleMaskClick(javafx.scene.input.MouseEvent event) {
         if (!isSelecting && selectionArea != null) {
-            System.out.println("6Selection area: " + selectionArea);
             double clickX = event.getScreenX();
             double clickY = event.getScreenY();
 
@@ -351,7 +366,6 @@ public class ScreenshotSelector {
         border.setStroke(Color.rgb(0, 120, 215));
         border.setStrokeWidth(2);
         border.getStrokeDashArray().addAll(10.0, 15.0);
-        border.setMouseTransparent(false);
         return border;
     }
 
@@ -427,15 +441,16 @@ public class ScreenshotSelector {
      */
     private void setupMouseHandlers(Scene scene) {
         scene.setOnMousePressed(event -> {
-            scene.setCursor(javafx.scene.Cursor.CROSSHAIR);
-            startX = event.getScreenX();
-            startY = event.getScreenY();
-            isSelecting = true;
+            if (isSelecting) {
+                scene.setCursor(javafx.scene.Cursor.CROSSHAIR);
+                startX = event.getScreenX();
+                startY = event.getScreenY();
+            }
         });
 
         scene.setOnMouseDragged(event -> {
-            stopMouseTracking();
             if (isSelecting) {
+                stopMouseTracking();
                 root.setClip(null);
                 updateFullscreen(0, 0, currentScreenBounds.getWidth(), currentScreenBounds.getHeight());
                 root.getChildren().set(0, fullscreenMask);
@@ -446,25 +461,33 @@ public class ScreenshotSelector {
             }
         });
 
-        scene.setOnMouseReleased(event -> handleMouseReleased(event, scene));
+        scene.setOnMouseReleased(event -> {
+            if (isSelecting) {
+                handleMouseReleased(event, scene);
+            }
+        });
     }
 
     private void handleMouseReleased(javafx.scene.input.MouseEvent event, Scene scene) {
         stopMouseTracking();
-        if (isSelecting) {
-            scene.setCursor(javafx.scene.Cursor.DEFAULT);
-            endX = event.getScreenX();
-            endY = event.getScreenY();
-            isSelecting = false;
+        scene.setCursor(DEFAULT);
+        endX = event.getScreenX();
+        endY = event.getScreenY();
+        isSelecting = false;
 
-            updateSelectionAreaPosition();
-            setupDragHandlers();
+        updateSelectionAreaPosition();
 
-            if (floatingToolbar != null) {
-                root.getChildren().remove(floatingToolbar.getToolbar());
-            }
-            floatingToolbar = new FloatingToolbar(selectionBorder, root, drawCanvasArea);
+        // 先移除旧的处理器
+        removeDragHandlers();
+
+        // 设置新的处理器
+        setupDragHandlers();
+
+        if (floatingToolbar != null) {
+            root.getChildren().remove(floatingToolbar.getToolbar());
+            floatingToolbar = null;
         }
+        floatingToolbar = new FloatingToolbar(selectionBorder, root, drawCanvasArea, this);
     }
 
     /**
@@ -503,7 +526,10 @@ public class ScreenshotSelector {
     /**
      * 设置拖动事件处理器
      */
-    private void setupDragHandlers() {
+    public void setupDragHandlers() {
+        // 先清理旧的处理器
+        removeDragHandlers();
+
         final double[] dragDelta = new double[2];
 
         // 创建全屏检测区域
@@ -516,9 +542,13 @@ public class ScreenshotSelector {
         Rectangle bottomLeftArea = new Rectangle();
         Rectangle bottomRightArea = new Rectangle();
 
+        dragAreas.addAll(Arrays.asList(
+                topArea, bottomArea, leftArea, rightArea,
+                topLeftArea, topRightArea, bottomLeftArea, bottomRightArea
+        ));
+
         // 设置检测区域为透明
-        for (Rectangle area : new Rectangle[]{topArea, bottomArea, leftArea, rightArea,
-                topLeftArea, topRightArea, bottomLeftArea, bottomRightArea}) {
+        for (Rectangle area : dragAreas) {
             area.setFill(Color.TRANSPARENT);
             area.setMouseTransparent(false);
         }
@@ -577,9 +607,11 @@ public class ScreenshotSelector {
             bottomRightArea.setHeight(screenHeight - (y + height));
         };
 
+        ChangeListener<Number> positionListener = (obs, oldVal, newVal) -> updateAreas.accept(selectionBorder);
+        borderListeners.add(positionListener);
+
         // 添加检测区域到场景
-        root.getChildren().addAll(topArea, bottomArea, leftArea, rightArea,
-                topLeftArea, topRightArea, bottomLeftArea, bottomRightArea);
+        root.getChildren().addAll(dragAreas);
 
         // 设置检测区域事件
         setupAreaEvents(topArea, "n", javafx.scene.Cursor.V_RESIZE, dragDelta);
@@ -592,37 +624,90 @@ public class ScreenshotSelector {
         setupAreaEvents(bottomRightArea, "se", javafx.scene.Cursor.SE_RESIZE, dragDelta);
 
         // 更新检测区域位置
-        selectionBorder.xProperty().addListener((obs, oldVal, newVal) -> updateAreas.accept(selectionBorder));
-        selectionBorder.yProperty().addListener((obs, oldVal, newVal) -> updateAreas.accept(selectionBorder));
-        selectionBorder.widthProperty().addListener((obs, oldVal, newVal) -> updateAreas.accept(selectionBorder));
-        selectionBorder.heightProperty().addListener((obs, oldVal, newVal) -> updateAreas.accept(selectionBorder));
+        selectionBorder.xProperty().addListener(positionListener);
+        selectionBorder.yProperty().addListener(positionListener);
+        selectionBorder.widthProperty().addListener(positionListener);
+        selectionBorder.heightProperty().addListener(positionListener);
 
         // 初始更新检测区域位置
         updateAreas.accept(selectionBorder);
 
         // 设置选择区域的拖动事件
-        selectionBorder.setOnMousePressed(e -> {
+        EventHandler<MouseEvent> borderPressedHandler = e -> {
             if (!isResizing) {
                 dragDelta[0] = e.getSceneX() - selectionBorder.getX();
                 dragDelta[1] = e.getSceneY() - selectionBorder.getY();
-                selectionBorder.getScene().setCursor(javafx.scene.Cursor.MOVE);
+                selectionBorder.getScene().setCursor(MOVE);
             }
             e.consume();
-        });
+        };
 
-        selectionBorder.setOnMouseDragged(e -> {
+        EventHandler<MouseEvent> borderDraggedHandler = e -> {
             if (!isResizing) {
-                handleDrag(e, dragDelta);
+                handleResize(e, dragDelta);
             }
             e.consume();
-        });
+        };
 
-        selectionBorder.setOnMouseReleased(e -> {
+        EventHandler<MouseEvent> borderReleasedHandler = e -> {
             isResizing = false;
             resizeDirection = "";
-            selectionBorder.getScene().setCursor(javafx.scene.Cursor.DEFAULT);
+            selectionBorder.getScene().setCursor(DEFAULT);
             e.consume();
+        };
+
+        selectionBorder.setOnMousePressed(borderPressedHandler);
+        selectionBorder.setOnMouseDragged(borderDraggedHandler);
+        selectionBorder.setOnMouseReleased(borderReleasedHandler);
+
+        // 重新设置遮罩点击事件
+        selectClip();
+    }
+
+    public void removeDragHandlers() {
+        // 移除检测区域事件
+        dragAreas.forEach(area -> {
+            area.setOnMousePressed(null);
+            area.setOnMouseDragged(null);
+            area.setOnMouseReleased(null);
+            area.setOnMouseEntered(null);
+            area.setOnMouseExited(null);
         });
+
+        // 移除选区属性监听器
+        borderListeners.forEach(listener -> {
+            if (listener != null) {
+                selectionBorder.xProperty().removeListener(listener);
+                selectionBorder.yProperty().removeListener(listener);
+                selectionBorder.widthProperty().removeListener(listener);
+                selectionBorder.heightProperty().removeListener(listener);
+            }
+        });
+        borderListeners.clear();
+
+        // 移除选区鼠标事件
+        selectionBorder.setOnMousePressed(null);
+        selectionBorder.setOnMouseDragged(null);
+        selectionBorder.setOnMouseReleased(null);
+        selectionBorder.setOnMouseEntered(null);
+        selectionBorder.setOnMouseExited(null);
+
+        // 移除场景级别的移动事件
+        if (selectorStage != null && selectorStage.getScene() != null) {
+            Scene scene = selectorStage.getScene();
+            scene.setOnMousePressed(null);
+            scene.setOnMouseDragged(null);
+            scene.setOnMouseReleased(null);
+        }
+
+        // 从场景中移除检测区域
+        root.getChildren().removeAll(dragAreas);
+        dragAreas.clear();
+
+        // 重置状态
+        isResizing = false;
+        resizeDirection = "";
+        isSelecting = false;
     }
 
     private void setupAreaEvents(Rectangle area, String direction, javafx.scene.Cursor cursor, double[] dragDelta) {
@@ -634,7 +719,7 @@ public class ScreenshotSelector {
 
         area.setOnMouseExited(e -> {
             if (!isResizing) {
-                area.getScene().setCursor(javafx.scene.Cursor.DEFAULT);
+                area.getScene().setCursor(DEFAULT);
             }
         });
 
@@ -896,7 +981,7 @@ public class ScreenshotSelector {
             case "sw":
                 return javafx.scene.Cursor.SW_RESIZE;
             default:
-                return javafx.scene.Cursor.DEFAULT;
+                return DEFAULT;
         }
     }
 

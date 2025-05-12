@@ -16,6 +16,7 @@ public class DrawCanvas extends Pane {
     private Path currentPath;
     private Rectangle tempRect;
     private Color strokeColor = Color.BLUE;
+    private Pane parentContainer;
 
     private final Stack<Node> undoStack = new Stack<>();
     private final Stack<Node> redoStack = new Stack<>();
@@ -24,59 +25,7 @@ public class DrawCanvas extends Pane {
         deactivateCurrentTool();
         this.setPickOnBounds(true);
         this.setStyle("-fx-background-color: transparent;");
-    }
-
-    private void setupPen() {
-        currentPath = new Path();
-        currentPath.setStroke(strokeColor);
-        currentPath.setStrokeWidth(2);
-
-        this.setOnMousePressed(e -> {
-            currentPath.getElements().clear();
-            currentPath.getElements().add(new MoveTo(e.getX(), e.getY()));
-        });
-
-        this.setOnMouseDragged(e -> {
-            currentPath.getElements().add(new LineTo(e.getX(), e.getY()));
-            if (!this.getChildren().contains(currentPath)) {
-                this.getChildren().add(currentPath);
-            }
-        });
-    }
-
-    private void setupRectangle() {
-        tempRect = new Rectangle();
-        tempRect.setStroke(strokeColor);
-        tempRect.setFill(Color.TRANSPARENT);
-
-        this.setOnMousePressed(e -> {
-            tempRect.setX(e.getX());
-            tempRect.setY(e.getY());
-        });
-
-        this.setOnMouseDragged(e -> {
-            tempRect.setWidth(Math.abs(e.getX() - tempRect.getX()));
-            tempRect.setHeight(Math.abs(e.getY() - tempRect.getY()));
-            if (!this.getChildren().contains(tempRect)) {
-                this.getChildren().add(tempRect);
-            }
-        });
-
-        this.setOnMouseReleased(e -> {
-            this.getChildren().remove(tempRect);
-            Rectangle finalRect = new Rectangle(
-                    tempRect.getX(), tempRect.getY(),
-                    tempRect.getWidth(), tempRect.getHeight()
-            );
-            finalRect.setStroke(strokeColor);
-            this.getChildren().add(finalRect);
-        });
-    }
-
-    private void clearEventHandlers() {
-        this.setOnMousePressed(null);
-        this.setOnMouseDragged(null);
-        this.setOnMouseReleased(null);
+        this.parentContainer = parentContainer;
     }
 
     private void saveState(Node node) {
@@ -97,10 +46,12 @@ public class DrawCanvas extends Pane {
     }
 
     public void activateTool(DrawMode mode) {
-        deactivateCurrentTool(); // 先清理旧状态
-        currentMode = mode;
-        this.setMouseTransparent(false);
+        if (currentMode == mode) {
+            deactivateCurrentTool();
+            return;
+        }
 
+        this.setMouseTransparent(false);
         switch (mode) {
             case PEN -> {
                 System.out.println("初始化画笔配置");
@@ -108,10 +59,6 @@ public class DrawCanvas extends Pane {
             }
             case RECTANGLE -> setupRectTool();
             case NONE -> {} // 无操作
-        }
-        // 激活绘图模式时，禁用选择区域的鼠标事件
-        if (getParent() != null) {
-            getParent().setMouseTransparent(true);
         }
     }
 
@@ -152,12 +99,13 @@ public class DrawCanvas extends Pane {
         }
     }
 
-    // ==== 具体工具配置 ====
     private void setupPenTool() {
+        if (currentPath != null) {
+            getChildren().remove(currentPath);
+        }
         currentPath = new Path();
         currentPath.setStroke(strokeColor);
-        currentPath.setStrokeWidth(2);
-
+        System.out.println("setupPenTool" + currentPath);
         this.setOnMousePressed(e -> {
             System.out.println("画笔: 鼠标按下 @(" + e.getX() + "," + e.getY() + ")");
             currentPath.getElements().add(new MoveTo(e.getX(), e.getY()));
@@ -170,12 +118,19 @@ public class DrawCanvas extends Pane {
                 getChildren().add(currentPath);
             }
         });
+        this.setOnMouseReleased(e -> saveState(currentPath));
     }
 
     private void setupRectTool() {
+        if (tempRect != null) {
+            getChildren().remove(tempRect);
+        }
+
         tempRect = new Rectangle();
         tempRect.setStroke(strokeColor);
         tempRect.setFill(Color.TRANSPARENT);
+        tempRect.setWidth(0);
+        tempRect.setHeight(0);
 
         this.setOnMousePressed(e -> {
             tempRect.setX(e.getX());
@@ -191,11 +146,11 @@ public class DrawCanvas extends Pane {
         });
 
         this.setOnMouseReleased(e -> {
-            // 转换为最终图形
             Rectangle finalRect = createFinalRectangle();
             getChildren().remove(tempRect);
             getChildren().add(finalRect);
         });
+        this.setOnMouseReleased(e -> saveState(tempRect));
     }
 
     private Rectangle createFinalRectangle() {

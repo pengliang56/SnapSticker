@@ -1,5 +1,6 @@
 package com.github.sticker.draw;
 
+import com.github.sticker.screenshot.ScreenshotSelector;
 import javafx.animation.FadeTransition;
 import javafx.beans.binding.Bindings;
 import javafx.scene.Scene;
@@ -36,11 +37,13 @@ public class FloatingToolbar {
     private Button rectButton;
     private final DrawCanvas drawCanvas;
     private Button activeButton;
+    private final ScreenshotSelector screenshotSelector;
 
-    public FloatingToolbar(Rectangle selectionArea, Pane parentContainer, DrawCanvas drawCanvasArea) {
+    public FloatingToolbar(Rectangle selectionArea, Pane parentContainer, DrawCanvas drawCanvasArea, ScreenshotSelector screenshotSelector) {
         this.drawCanvas = drawCanvasArea;
         this.selectionArea = selectionArea;
         this.parentContainer = parentContainer;
+        this.screenshotSelector = screenshotSelector;
         initializeToolbar();
         parentContainer.getChildren().add(toolbar);
     }
@@ -154,12 +157,13 @@ public class FloatingToolbar {
     }
 
     private void createBrushButton() {
-        penButton = createIconButton(BUTTON_ICONS[1], "Pencil(-)");
+        penButton = createIconButton(BUTTON_ICONS[1], "Pencil");
         penButton.setOnAction(e -> {
-            if(drawCanvas.getCurrentDrawMode() == DrawMode.PEN) {
+            if (drawCanvas.getCurrentDrawMode() == DrawMode.PEN) {
                 drawCanvas.deactivateCurrentTool();
+                handleToolButtonClick(penButton, DrawMode.NONE);
             } else {
-                drawCanvas.activateTool(DrawMode.PEN);
+                handleToolButtonClick(penButton, DrawMode.PEN);
             }
         });
         toolbar.getChildren().add(penButton);
@@ -168,7 +172,7 @@ public class FloatingToolbar {
     private void createRectButton() {
         rectButton = createIconButton(BUTTON_ICONS[2], "绘制矩形");
         rectButton.setOnAction(e -> {
-            if(drawCanvas.getCurrentDrawMode() == DrawMode.RECTANGLE) {
+            if (drawCanvas.getCurrentDrawMode() == DrawMode.RECTANGLE) {
                 drawCanvas.deactivateCurrentTool();
             } else {
                 drawCanvas.activateTool(DrawMode.RECTANGLE);
@@ -227,6 +231,8 @@ public class FloatingToolbar {
             drawCanvas.deactivateCurrentTool();
             clickedBtn.getStyleClass().remove("active");
             activeButton = null;
+            drawCanvas.setStyle("-fx-background-color: rgba(0,0,0,0);");
+            screenshotSelector.setupDragHandlers();
         } else {
             // 取消其他按钮状态
             if (activeButton != null) {
@@ -237,6 +243,14 @@ public class FloatingToolbar {
             drawCanvas.activateTool(targetMode);
             clickedBtn.getStyleClass().add("active");
             activeButton = clickedBtn;
+            drawCanvas.setStyle("-fx-background-color: rgb(0,0,0,0.01);");
+            drawCanvas.setPickOnBounds(true);
+            drawCanvas.setMouseTransparent(false);
+
+            parentContainer.getChildren().get(3).setPickOnBounds(false);
+            parentContainer.getChildren().get(3).setMouseTransparent(true);
+            parentContainer.getChildren().get(3).setStyle("-fx-background-color: rgb(0,0,0,0);");
+            screenshotSelector.removeDragHandlers();
         }
     }
 
