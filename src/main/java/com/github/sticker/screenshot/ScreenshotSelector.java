@@ -466,9 +466,6 @@ public class ScreenshotSelector {
 
         updateSelectionAreaPosition();
 
-        // 先移除旧的处理器
-        removeDragHandlers();
-
         // 设置新的处理器
         setupDragHandlers();
 
@@ -516,9 +513,6 @@ public class ScreenshotSelector {
      * 设置拖动事件处理器
      */
     public void setupDragHandlers() {
-        // 先清理旧的处理器
-        removeDragHandlers();
-
         final double[] dragDelta = new double[2];
 
         // 创建全屏检测区域
@@ -621,7 +615,6 @@ public class ScreenshotSelector {
         // 初始更新检测区域位置
         updateAreas.accept(selectionBorder);
 
-        // 设置选择区域的拖动事件
         selectionBorder.setOnMousePressed(e -> {
             if (!isResizing) {
                 dragDelta[0] = e.getSceneX() - selectionBorder.getX();
@@ -660,49 +653,7 @@ public class ScreenshotSelector {
     }
 
     public void removeDragHandlers() {
-        // 移除检测区域事件
-        dragAreas.forEach(area -> {
-            area.setOnMousePressed(null);
-            area.setOnMouseDragged(null);
-            area.setOnMouseReleased(null);
-            area.setOnMouseEntered(null);
-            area.setOnMouseExited(null);
-        });
 
-        // 移除选区属性监听器
-        borderListeners.forEach(listener -> {
-            if (listener != null) {
-                selectionBorder.xProperty().removeListener(listener);
-                selectionBorder.yProperty().removeListener(listener);
-                selectionBorder.widthProperty().removeListener(listener);
-                selectionBorder.heightProperty().removeListener(listener);
-            }
-        });
-        borderListeners.clear();
-
-        // 移除选区鼠标事件
-        selectionBorder.setOnMousePressed(null);
-        selectionBorder.setOnMouseDragged(null);
-        selectionBorder.setOnMouseReleased(null);
-        selectionBorder.setOnMouseEntered(null);
-        selectionBorder.setOnMouseExited(null);
-
-        // 移除场景级别的移动事件
-        if (selectorStage != null && selectorStage.getScene() != null) {
-            Scene scene = selectorStage.getScene();
-            scene.setOnMousePressed(null);
-            scene.setOnMouseDragged(null);
-            scene.setOnMouseReleased(null);
-        }
-
-        // 从场景中移除检测区域
-        root.getChildren().removeAll(dragAreas);
-        dragAreas.clear();
-
-        // 重置状态
-        isResizing = false;
-        resizeDirection = "";
-        isSelecting = false;
     }
 
     private void setupAreaEvents(Rectangle area, String direction, javafx.scene.Cursor cursor, double[] dragDelta) {

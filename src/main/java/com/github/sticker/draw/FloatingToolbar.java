@@ -29,6 +29,7 @@ public class FloatingToolbar {
             // 贴图图标（图钉）
             "M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"
     };
+    private DrawMode currentMode = DrawMode.NONE;
 
     private final HBox toolbar = new HBox(8);
     private final HBox subToolbar = new HBox(10);
@@ -45,6 +46,7 @@ public class FloatingToolbar {
     private final DrawCanvas drawCanvas;
     private Button activeButton;
     private final ScreenshotSelector screenshotSelector;
+    private boolean drawMode;
 
     public FloatingToolbar(Rectangle selectionArea, Pane parentContainer, DrawCanvas drawCanvasArea, ScreenshotSelector screenshotSelector) {
         this.drawCanvas = drawCanvasArea;
@@ -61,12 +63,13 @@ public class FloatingToolbar {
         createButtons();
         setupBottomPositionBinding();
         setupKeyboardToggle();
-        
+
         // 加载CSS样式
         toolbar.getStylesheets().add(
                 Objects.requireNonNull(getClass().getResource("/styles/toolbar.css")).toExternalForm()
         );
         toolbar.getStyleClass().add("toolbar");
+        toolbar.setPickOnBounds(false);
     }
 
     private void setupBottomPositionBinding() {
@@ -171,26 +174,26 @@ public class FloatingToolbar {
     private void createBrushButton() {
         penButton = createIconButton(BUTTON_ICONS[1], "Pencil");
         penButton.setOnAction(e -> {
-            if (drawCanvas.getCurrentDrawMode() == DrawMode.PEN) {
-                drawCanvas.deactivateCurrentTool();
-                handleToolButtonClick(penButton, DrawMode.NONE);
-                drawCanvas.setCurrentDrawMode(DrawMode.NONE);
+            if (currentMode == DrawMode.PEN) {
+                handleToolButtonClick(penButton, DrawMode.PEN);
+                currentMode = DrawMode.NONE;
             } else {
                 handleToolButtonClick(penButton, DrawMode.PEN);
-                drawCanvas.setCurrentDrawMode(DrawMode.PEN);
+                currentMode = DrawMode.PEN;
             }
-            System.out.println("drawCanvas status by OnAction: " + drawCanvas.getCurrentDrawMode());
         });
         toolbar.getChildren().add(penButton);
     }
 
     private void createRectButton() {
-        rectButton = createIconButton(BUTTON_ICONS[2], "绘制矩形");
+        rectButton = createIconButton(BUTTON_ICONS[2], "Rectangle");
         rectButton.setOnAction(e -> {
-            if (drawCanvas.getCurrentDrawMode() == DrawMode.RECTANGLE) {
-                drawCanvas.deactivateCurrentTool();
+            if (currentMode == DrawMode.RECTANGLE) {
+                drawCanvas.activateTool(DrawMode.RECTANGLE);
+                currentMode = DrawMode.NONE;
             } else {
                 drawCanvas.activateTool(DrawMode.RECTANGLE);
+                currentMode = DrawMode.RECTANGLE;
             }
         });
         toolbar.getChildren().add(rectButton);
@@ -245,21 +248,16 @@ public class FloatingToolbar {
             updateButtonStyle(activeButton, false);
         }
 
-        System.out.println("----" + drawCanvas.getCurrentDrawMode());
-        System.out.println("----" + targetMode);
-        if (drawCanvas.getCurrentDrawMode() == targetMode) {
-            System.out.println("drawCanvas.getCurrentDrawMode() == targetMode");
-            drawCanvas.deactivateCurrentTool();
+        System.out.println("currentMode = " + currentMode);
+        System.out.println("targetMode = " + targetMode);
+        if (currentMode == targetMode) {
             clickedBtn.getStyleClass().remove("active");
             activeButton = null;
-            drawCanvas.setStyle("-fx-background-color: rgba(0,0,0,0);");
-            screenshotSelector.setupDragHandlers();
+            drawMode(false);
 
             subToolbar.setVisible(false); // 隐藏子工具栏
             subToolbar.setManaged(false);
         } else {
-            // 取消其他按钮状态
-            System.out.println("取消其他按钮状态");
             if (activeButton != null) {
                 activeButton.getStyleClass().remove("active");
             }
@@ -268,22 +266,23 @@ public class FloatingToolbar {
             drawCanvas.activateTool(targetMode);
             clickedBtn.getStyleClass().add("active");
             activeButton = clickedBtn;
-            drawCanvas.setStyle("-fx-background-color: rgb(0,0,0,0.01);");
-            drawCanvas.setPickOnBounds(true);
+
             drawCanvas.setMouseTransparent(false);
-
-            parentContainer.getChildren().get(3).setPickOnBounds(false);
-            parentContainer.getChildren().get(3).setMouseTransparent(true);
-            parentContainer.getChildren().get(3).setStyle("-fx-background-color: rgb(0,0,0,0);");
-            screenshotSelector.removeDragHandlers();
-
+            drawMode(true);
             updateSubToolbarVisibility(targetMode);
-            updateButtonStyle(clickedBtn, !(drawCanvas.getCurrentDrawMode() == targetMode));
+            updateButtonStyle(clickedBtn, !(currentMode == targetMode));
         }
     }
 
+    public void drawMode(boolean drawMode) {
+        parentContainer.getChildren().forEach(it -> it.setMouseTransparent(drawMode));
+        drawCanvas.setMouseTransparent(!drawMode);
+        subToolbar.setMouseTransparent(false);
+        toolbar.setMouseTransparent(false);
+    }
+
     private void createSubToolbar() {
-        // 样式配置
+        subToolbar.setPickOnBounds(false);
         subToolbar.setStyle(toolbar.getStyle() + "-fx-padding: 6 12 6 12;");
         subToolbar.setVisible(false);
         subToolbar.setManaged(false); // 不参与布局计算

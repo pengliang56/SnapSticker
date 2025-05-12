@@ -3,15 +3,11 @@ package com.github.sticker.draw;
 import javafx.scene.Node;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.LineTo;
-import javafx.scene.shape.MoveTo;
-import javafx.scene.shape.Path;
-import javafx.scene.shape.Rectangle;
+import javafx.scene.shape.*;
 
 import java.util.Stack;
 
 public class DrawCanvas extends Pane {
-    private DrawMode currentMode = DrawMode.NONE;
     private Path currentPath;
     private Rectangle tempRect;
     private Color strokeColor = Color.RED;
@@ -20,15 +16,24 @@ public class DrawCanvas extends Pane {
 
     private Pane parentContainer;
 
-    public Color getStrokeColor() { return strokeColor; }
-    public double getStrokeWidth() { return strokeWidth; }
-    public boolean isStrokeDashed() { return strokeDashed; }
+    public Color getStrokeColor() {
+        return strokeColor;
+    }
+
+    public double getStrokeWidth() {
+        return strokeWidth;
+    }
+
+    public boolean isStrokeDashed() {
+        return strokeDashed;
+    }
 
     private final Stack<Node> undoStack = new Stack<>();
     private final Stack<Node> redoStack = new Stack<>();
 
     public DrawCanvas(Pane parentContainer) {
-        deactivateCurrentTool();
+        this.setCache(true);
+
         this.setPickOnBounds(true);
         this.setStyle("-fx-background-color: transparent;");
         this.parentContainer = parentContainer;
@@ -47,75 +52,20 @@ public class DrawCanvas extends Pane {
         }
     }
 
-    public DrawMode getCurrentDrawMode() {
-        return currentMode;
-    }
-
-    public void setCurrentDrawMode(DrawMode drawMode) {
-        this.currentMode = drawMode;
-    }
-
     public void activateTool(DrawMode mode) {
-        if (currentMode == mode) {
-            deactivateCurrentTool();
-            return;
-        }
-
-        this.setMouseTransparent(false);
         switch (mode) {
             case PEN -> {
-                System.out.println("初始化画笔配置");
                 setupPenTool();
             }
             case RECTANGLE -> setupRectTool();
-            case NONE -> {} // 无操作
-        }
-    }
-
-    public void deactivateCurrentTool() {
-        currentMode = DrawMode.NONE;
-
-        // 清理事件监听器
-        this.setOnMousePressed(null);
-        this.setOnMouseDragged(null);
-        this.setOnMouseReleased(null);
-
-        // 清理临时图形
-        if (tempRect != null) {
-            this.getChildren().remove(tempRect);
-            tempRect = null;
-        }
-        if (currentPath != null) {
-            this.getChildren().remove(currentPath);
-            currentPath = null;
-        }
-
-        // 允许事件穿透
-        this.setMouseTransparent(true);
-        
-        // 禁用绘图模式时，启用选择区域的鼠标事件
-        if (getParent() != null) {
-            getParent().setMouseTransparent(false);
-        }
-    }
-
-    private void cleanupTempShapes() {
-        // 清理未完成的临时图形
-        if (tempRect != null && this.getChildren().contains(tempRect)) {
-            this.getChildren().remove(tempRect);
-        }
-        if (currentPath != null && this.getChildren().contains(currentPath)) {
-            this.getChildren().remove(currentPath);
+            case NONE -> {
+            }
         }
     }
 
     private void setupPenTool() {
-        if (currentPath != null) {
-            getChildren().remove(currentPath);
-        }
         currentPath = new Path();
         currentPath.setStroke(strokeColor);
-        System.out.println("setupPenTool" + currentPath);
         this.setOnMousePressed(e -> {
             currentPath.getElements().add(new MoveTo(e.getX(), e.getY()));
         });
@@ -185,6 +135,10 @@ public class DrawCanvas extends Pane {
 
     private void updateCurrentStrokeStyle() {
         if (currentPath != null) {
+            currentPath.setStrokeLineCap(StrokeLineCap.ROUND);
+            currentPath.setStrokeLineJoin(StrokeLineJoin.ROUND);
+            currentPath.setStrokeMiterLimit(10);
+
             currentPath.setStroke(strokeColor);
             currentPath.setStrokeWidth(strokeWidth);
             if (strokeDashed) {
