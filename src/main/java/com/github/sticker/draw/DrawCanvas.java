@@ -4,7 +4,10 @@ import javafx.geometry.Point2D;
 import javafx.scene.Node;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.*;
+import javafx.scene.shape.MoveTo;
+import javafx.scene.shape.Path;
+import javafx.scene.shape.QuadCurveTo;
+import javafx.scene.shape.Rectangle;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -12,7 +15,10 @@ import java.util.Stack;
 
 public class DrawCanvas extends Pane {
     private Path currentPath;
-    private List<Point2D> points = new ArrayList<>();
+    private final List<Point2D> points = new ArrayList<>();
+    private static final double SAMPLE_DISTANCE = 3.0;
+    private Point2D lastSampledPoint;
+
     private Rectangle currentRectangle;
     private Color strokeColor = Color.RED;
     private double strokeWidth = 2;
@@ -56,7 +62,8 @@ public class DrawCanvas extends Pane {
     void setupPenTool() {
         this.setOnMousePressed(e -> {
             points.clear();
-            points.add(new Point2D(e.getX(), e.getY()));
+            lastSampledPoint = new Point2D(e.getX(), e.getY());
+            points.add(lastSampledPoint);
 
             currentPath = new Path();
             if (strokeDashed) {
@@ -71,22 +78,25 @@ public class DrawCanvas extends Pane {
         });
 
         this.setOnMouseDragged(e -> {
-            Point2D point = new Point2D(e.getX(), e.getY());
-            points.add(point);
+            Point2D currentPoint = new Point2D(e.getX(), e.getY());
+            if (currentPoint.distance(lastSampledPoint) >= SAMPLE_DISTANCE) {
+                points.add(currentPoint);
+                lastSampledPoint = currentPoint;
 
-            if (points.size() >= 3) {
-                Point2D p0 = points.get(points.size() - 3);
-                Point2D p1 = points.get(points.size() - 2);
-                Point2D p2 = points.get(points.size() - 1);
+                if (points.size() >= 3) {
+                    Point2D p0 = points.get(points.size() - 3);
+                    Point2D p1 = points.get(points.size() - 2);
+                    Point2D p2 = points.get(points.size() - 1);
 
-                currentPath.getElements().add(
-                        new QuadCurveTo(
-                                p1.getX(), p1.getY(),
-                                (p1.getX() + p2.getX()) / 2, (p1.getY() + p2.getY()) / 2
-                        )
-                );
-            } else if (points.size() == 2) {
-                currentPath.getElements().add(new javafx.scene.shape.LineTo(point.getX(), point.getY()));
+                    currentPath.getElements().add(
+                            new QuadCurveTo(
+                                    p1.getX(), p1.getY(),
+                                    (p1.getX() + p2.getX()) / 2, (p1.getY() + p2.getY()) / 2
+                            )
+                    );
+                } else if (points.size() == 2) {
+                    currentPath.getElements().add(new javafx.scene.shape.LineTo(currentPoint.getX(), currentPoint.getY()));
+                }
             }
         });
         this.setOnMouseReleased(e -> {
