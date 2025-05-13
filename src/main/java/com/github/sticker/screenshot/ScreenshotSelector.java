@@ -6,11 +6,9 @@ import com.github.sticker.util.ScreenManager;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.beans.value.ChangeListener;
-import javafx.event.EventHandler;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.CacheHint;
 import javafx.scene.Scene;
-import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
@@ -221,7 +219,7 @@ public class ScreenshotSelector {
         selectionArea = createSelectionMask();
         selectionBorder = createSelectionBorder();
         createDrawCanvsaArea();
-        root.getChildren().addAll(fullscreenMask, selectionArea, drawCanvasArea, selectionBorder);
+        root.getChildren().addAll(drawCanvasArea, fullscreenMask, selectionArea, selectionBorder);
 
         // Initial mask update based on mouse position
         updateMaskBasedOnMousePosition();
@@ -232,7 +230,6 @@ public class ScreenshotSelector {
         drawCanvasArea.setLayoutX(0);
         drawCanvasArea.setLayoutY(0);
         drawCanvasArea.setPrefSize(currentScreenBounds.getWidth(), currentScreenBounds.getHeight());
-        // 确保绘图画布不会阻挡工具栏的事件
         drawCanvasArea.setMouseTransparent(true);
     }
 
@@ -304,7 +301,7 @@ public class ScreenshotSelector {
         Shape mask = Shape.subtract(fullscreenMask, selectionArea);
         addBorder(mask);
         mask.setFill(Color.color(0, 0, 0, MASK_OPACITY));
-        root.getChildren().set(0, mask);
+        root.getChildren().set(1, mask);
     }
 
     private void addBorder(Shape mask) {
@@ -338,13 +335,13 @@ public class ScreenshotSelector {
             Shape mask = Shape.subtract(fullscreenMask, taskbarCutout);
             mask.setFill(Color.color(0, 0, 0, MASK_OPACITY));
             addBorder(mask);
-            root.getChildren().set(0, mask);
+            root.getChildren().set(1, mask);
         } else {
             // If no taskbar, just use the base mask
             Shape mask = Shape.subtract(fullscreenMask, selectionArea);
             mask.setFill(Color.color(0, 0, 0, MASK_OPACITY));
             addBorder(mask);
-            root.getChildren().set(0, mask);
+            root.getChildren().set(1, mask);
         }
     }
 
@@ -420,7 +417,7 @@ public class ScreenshotSelector {
     private void selectClip() {
         Shape clip = Shape.subtract(fullscreenMask, selectionArea);
         clip.setFill(Color.color(0, 0, 0, MASK_OPACITY));
-        root.getChildren().set(0, clip);
+        root.getChildren().set(1, clip);
     }
 
     /**
@@ -442,7 +439,7 @@ public class ScreenshotSelector {
                 stopMouseTracking();
                 root.setClip(null);
                 updateFullscreen(0, 0, currentScreenBounds.getWidth(), currentScreenBounds.getHeight());
-                root.getChildren().set(0, fullscreenMask);
+                root.getChildren().set(1, fullscreenMask);
 
                 endX = event.getScreenX();
                 endY = event.getScreenY();
@@ -526,8 +523,8 @@ public class ScreenshotSelector {
         Rectangle bottomRightArea = new Rectangle();
 
         dragAreas.addAll(Arrays.asList(
-            topArea, bottomArea, leftArea, rightArea,
-            topLeftArea, topRightArea, bottomLeftArea, bottomRightArea
+                topArea, bottomArea, leftArea, rightArea,
+                topLeftArea, topRightArea, bottomLeftArea, bottomRightArea
         ));
 
         // 设置检测区域为透明
@@ -590,8 +587,9 @@ public class ScreenshotSelector {
             bottomRightArea.setHeight(screenHeight - (y + height));
         };
 
-        ChangeListener<Number> positionListener = (obs, oldVal, newVal) -> updateAreas.accept(selectionBorder);
-        borderListeners.add(positionListener);
+        ChangeListener<Number> positionListener =
+                (obs, oldVal, newVal)
+                        -> updateAreas.accept(selectionBorder);
 
         // 添加检测区域到场景
         root.getChildren().addAll(dragAreas);
@@ -650,10 +648,6 @@ public class ScreenshotSelector {
                 selectionBorder.getScene().setCursor(DEFAULT);
             }
         });
-    }
-
-    public void removeDragHandlers() {
-
     }
 
     private void setupAreaEvents(Rectangle area, String direction, javafx.scene.Cursor cursor, double[] dragDelta) {

@@ -45,14 +45,11 @@ public class FloatingToolbar {
     private Button rectButton;
     private final DrawCanvas drawCanvas;
     private Button activeButton;
-    private final ScreenshotSelector screenshotSelector;
-    private boolean drawMode;
 
     public FloatingToolbar(Rectangle selectionArea, Pane parentContainer, DrawCanvas drawCanvasArea, ScreenshotSelector screenshotSelector) {
         this.drawCanvas = drawCanvasArea;
         this.selectionArea = selectionArea;
         this.parentContainer = parentContainer;
-        this.screenshotSelector = screenshotSelector;
         initializeToolbar();
         createSubToolbar();
         parentContainer.getChildren().add(toolbar);
@@ -190,7 +187,7 @@ public class FloatingToolbar {
     }
 
     private void createStickerButton() {
-        Button btn = createIconButton(BUTTON_ICONS[3], "添加贴图");
+        Button btn = createIconButton(Icon.tuding, "添加贴图");
         btn.setOnAction(e -> System.out.println("打开贴图库"));
         toolbar.getChildren().add(btn);
     }

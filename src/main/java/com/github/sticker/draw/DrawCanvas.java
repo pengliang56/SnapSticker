@@ -41,9 +41,6 @@ public class DrawCanvas extends Pane {
 
     public DrawCanvas() {
         this.setCache(true);
-
-        this.setPickOnBounds(true);
-        this.setStyle("-fx-background-color: transparent;");
     }
 
     private void saveState(Node node) {
