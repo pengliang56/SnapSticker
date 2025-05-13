@@ -1,11 +1,21 @@
 package com.github.sticker.draw;
 
+import com.github.sticker.screenshot.ScreenshotSelector;
 import javafx.animation.FadeTransition;
 import javafx.beans.binding.Bindings;
+import javafx.embed.swing.SwingFXUtils;
 import javafx.geometry.Orientation;
+import javafx.geometry.Point2D;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
 import javafx.scene.effect.DropShadow;
+import javafx.scene.image.PixelReader;
+import javafx.scene.image.PixelWriter;
+import javafx.scene.image.WritableImage;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.HBox;
@@ -13,8 +23,14 @@ import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.shape.SVGPath;
+import javafx.stage.FileChooser;
 import javafx.util.Duration;
 
+import javax.imageio.ImageIO;
+import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
 import java.util.Objects;
 
 public class FloatingToolbar {
@@ -34,6 +50,8 @@ public class FloatingToolbar {
     private Button rectButton;
     private final DrawCanvas drawCanvas;
     private Button activeButton;
+
+    private final ScreenshotSelector screenshotSelector;
 
     private void createButtons() {
         Separator sep = new Separator(Orientation.VERTICAL);
@@ -79,19 +97,37 @@ public class FloatingToolbar {
 
     private void createCopyButton() {
         Button btn = createIconButton(Icon.copy, "Copy to Clipboard");
-        btn.setOnAction(e -> System.out.println("Copy to Clipboard"));
+        btn.setOnAction(e -> {
+            Clipboard clipboard = Clipboard.getSystemClipboard();
+            ClipboardContent content = new ClipboardContent();
+            content.putImage(snapshotScreen());
+            clipboard.setContent(content);
+            screenshotSelector.cancelSelection();
+        });
         toolbar.getChildren().add(btn);
     }
 
     private void createCloseButton() {
         Button btn = createIconButton(Icon.clode, "Close");
-        btn.setOnAction(e -> System.out.println("Close"));
+        btn.setOnAction(e -> screenshotSelector.cancelSelection());
         toolbar.getChildren().add(btn);
     }
 
     private void createSaveButton() {
         Button btn = createIconButton(Icon.save, "Save to file");
-        btn.setOnAction(e -> System.out.println("Save"));
+        btn.setOnAction(e -> {
+            FileChooser fileChooser = new FileChooser();
+            fileChooser.setTitle("Save Screenshot");
+            fileChooser.getExtensionFilters().add(
+                    new FileChooser.ExtensionFilter("PNG Image", "*.png")
+            );
+            File file = fileChooser.showSaveDialog(toolbar.getScene().getWindow());
+            if (file != null) {
+                try {
+                    ImageIO.write(SwingFXUtils.fromFXImage(snapshotScreen(), null), "png", file);
+                } catch (IOException ignored) {}
+            }
+        });
         toolbar.getChildren().add(btn);
     }
 
@@ -343,10 +379,68 @@ public class FloatingToolbar {
         updateSubToolbarPosition();
     }
 
-    public FloatingToolbar(Rectangle selectionArea, Pane parentContainer, DrawCanvas drawCanvasArea) {
+    private WritableImage snapshotScreen(){
+        Rectangle selectionArea = screenshotSelector.getSelectionArea();
+
+        // 获取屏幕选区坐标和尺寸
+        double x = selectionArea.getX();
+        double y = selectionArea.getY();
+        double width = selectionArea.getWidth();
+        double height = selectionArea.getHeight();
+
+        // 1. 获取屏幕截图
+        Robot robot;
+        try {
+            robot = new Robot();
+        } catch (AWTException e) {
+            throw new RuntimeException("Failed to create Robot instance", e);
+        }
+
+        // 将JavaFX坐标转换为AWT屏幕坐标
+        Point2D sceneCoords = drawCanvas.localToScreen(x, y);
+        java.awt.Rectangle awtRect = new java.awt.Rectangle(
+                (int) sceneCoords.getX(),
+                (int) sceneCoords.getY(),
+                (int) width,
+                (int) height
+        );
+
+        BufferedImage screenImage = robot.createScreenCapture(awtRect);
+
+        // 2. 获取画布内容
+        WritableImage canvasImage = drawCanvas.snapshot(null, null);
+
+        // 3. 合并两张图片
+        WritableImage finalImage = new WritableImage((int)width, (int)height);
+        PixelWriter writer = finalImage.getPixelWriter();
+
+        // 先绘制屏幕截图
+        for (int i = 0; i < width; i++) {
+            for (int j = 0; j < height; j++) {
+                int argb = screenImage.getRGB(i, j);
+                writer.setArgb(i, j, argb);
+            }
+        }
+
+        // 再叠加绘制画布内容（只绘制非透明像素）
+        PixelReader reader = canvasImage.getPixelReader();
+        for (int i = 0; i < width; i++) {
+            for (int j = 0; j < height; j++) {
+                Color color = reader.getColor((int)(x + i), (int)(y + j));
+                if (color.getOpacity() > 0) { // 只绘制不透明的像素
+                    writer.setColor(i, j, color);
+                }
+            }
+        }
+
+        return finalImage;
+    }
+
+    public FloatingToolbar(Rectangle selectionArea, Pane parentContainer, DrawCanvas drawCanvasArea, ScreenshotSelector screenshotSelector) {
         this.drawCanvas = drawCanvasArea;
         this.selectionArea = selectionArea;
         this.parentContainer = parentContainer;
+        this.screenshotSelector = screenshotSelector;
         initializeToolbar();
         createSubToolbar();
         parentContainer.getChildren().add(toolbar);

@@ -362,7 +362,7 @@ public class ScreenshotSelector {
         border.setFill(Color.rgb(0, 0, 0, 0.01));
         border.setStroke(Color.rgb(0, 120, 215));
         border.setStrokeWidth(2);
-        border.getStrokeDashArray().addAll(10.0, 15.0);
+        border.setStrokeType(StrokeType.OUTSIDE);
         return border;
     }
 
@@ -470,7 +470,7 @@ public class ScreenshotSelector {
             root.getChildren().remove(floatingToolbar.getToolbar());
             floatingToolbar = null;
         }
-        floatingToolbar = new FloatingToolbar(selectionBorder, root, drawCanvasArea);
+        floatingToolbar = new FloatingToolbar(selectionBorder, root, drawCanvasArea, this);
     }
 
     /**
@@ -990,5 +990,9 @@ public class ScreenshotSelector {
      */
     public void cancelSelection() {
         cleanup();
+    }
+
+    public Rectangle getSelectionArea() {
+        return selectionBorder;
     }
 } 
