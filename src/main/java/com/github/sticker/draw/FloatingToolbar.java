@@ -57,19 +57,29 @@ public class FloatingToolbar {
 
     private void createRedoButton() {
         Button btn = createIconButton(Icon.redo, "Redo");
-        btn.setOnAction(e -> System.out.println("Redo"));
+        btn.setOnAction(e -> drawCanvas.redo());
+
+        btn.setDisable(true);
+        drawCanvas.redoStackEmptyProperty().addListener((obs, old, empty) ->
+                btn.setDisable(empty)
+        );
         toolbar.getChildren().add(btn);
     }
 
     private void createUndoButton() {
         Button btn = createIconButton(Icon.undo, "Undo");
-        btn.setOnAction(e -> System.out.println("Undo"));
+        btn.setOnAction(e -> drawCanvas.undo());
+
+        btn.setDisable(true);
+        drawCanvas.undoStackEmptyProperty().addListener((obs, old, empty) ->
+                btn.setDisable(empty)
+        );
         toolbar.getChildren().add(btn);
     }
 
     private void createCopyButton() {
         Button btn = createIconButton(Icon.copy, "Copy to Clipboard");
-        btn.setOnAction(e -> System.out.println("Copy"));
+        btn.setOnAction(e -> System.out.println("Copy to Clipboard"));
         toolbar.getChildren().add(btn);
     }
 

@@ -1,5 +1,7 @@
 package com.github.sticker.draw;
 
+import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.SimpleBooleanProperty;
 import javafx.geometry.Point2D;
 import javafx.scene.Node;
 import javafx.scene.layout.Pane;
@@ -26,6 +28,14 @@ public class DrawCanvas extends Pane {
     private double strokeWidth = 2;
     private boolean strokeDashed = false;
 
+
+    private final BooleanProperty undoStackEmpty = new SimpleBooleanProperty(true);
+    private final BooleanProperty redoStackEmpty = new SimpleBooleanProperty(true);
+
+    public BooleanProperty undoStackEmptyProperty() { return undoStackEmpty; }
+    public BooleanProperty redoStackEmptyProperty() { return redoStackEmpty; }
+
+
     public Color getStrokeColor() {
         return strokeColor;
     }
@@ -48,6 +58,11 @@ public class DrawCanvas extends Pane {
     private void saveState(Node node) {
         undoStack.push(node);
         redoStack.clear();
+        if (undoStack.size() > 50) {
+            undoStack.remove(0);
+        }
+        undoStackEmpty.set(undoStack.isEmpty());
+        redoStackEmpty.set(redoStack.isEmpty());
     }
 
     public void undo() {
@@ -55,6 +70,22 @@ public class DrawCanvas extends Pane {
             Node node = undoStack.pop();
             this.getChildren().remove(node);
             redoStack.push(node);
+            requestLayout();
+
+            undoStackEmpty.set(undoStack.isEmpty());
+            redoStackEmpty.set(redoStack.isEmpty());
+        }
+    }
+
+    public void redo() {
+        if (!redoStack.isEmpty()) {
+            Node node = redoStack.pop();
+            this.getChildren().add(node);
+            undoStack.push(node);
+            requestLayout();
+
+            undoStackEmpty.set(undoStack.isEmpty());
+            redoStackEmpty.set(redoStack.isEmpty());
         }
     }
 
