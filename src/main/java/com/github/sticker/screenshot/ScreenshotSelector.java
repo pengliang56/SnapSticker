@@ -228,7 +228,7 @@ public class ScreenshotSelector {
     }
 
     private void createDrawCanvsaArea() {
-        drawCanvasArea = new DrawCanvas(root);
+        drawCanvasArea = new DrawCanvas();
         drawCanvasArea.setLayoutX(0);
         drawCanvasArea.setLayoutY(0);
         drawCanvasArea.setPrefSize(currentScreenBounds.getWidth(), currentScreenBounds.getHeight());

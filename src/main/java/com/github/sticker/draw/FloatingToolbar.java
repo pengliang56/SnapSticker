@@ -174,13 +174,8 @@ public class FloatingToolbar {
     private void createBrushButton() {
         penButton = createIconButton(BUTTON_ICONS[1], "Pencil");
         penButton.setOnAction(e -> {
-            if (currentMode == DrawMode.PEN) {
-                handleToolButtonClick(penButton, DrawMode.PEN);
-                currentMode = DrawMode.NONE;
-            } else {
-                handleToolButtonClick(penButton, DrawMode.PEN);
-                currentMode = DrawMode.PEN;
-            }
+            currentMode = DrawMode.switchMode(currentMode, DrawMode.PEN);
+            activateTool(penButton);
         });
         toolbar.getChildren().add(penButton);
     }
@@ -188,13 +183,8 @@ public class FloatingToolbar {
     private void createRectButton() {
         rectButton = createIconButton(BUTTON_ICONS[2], "Rectangle");
         rectButton.setOnAction(e -> {
-            if (currentMode == DrawMode.RECTANGLE) {
-                drawCanvas.activateTool(DrawMode.RECTANGLE);
-                currentMode = DrawMode.NONE;
-            } else {
-                drawCanvas.activateTool(DrawMode.RECTANGLE);
-                currentMode = DrawMode.RECTANGLE;
-            }
+            currentMode = DrawMode.switchMode(currentMode, DrawMode.RECTANGLE);
+            activateTool(rectButton);
         });
         toolbar.getChildren().add(rectButton);
     }
@@ -243,42 +233,24 @@ public class FloatingToolbar {
         return drawCanvas;
     }
 
-    private void handleToolButtonClick(Button clickedBtn, DrawMode targetMode) {
-        if (activeButton != null) {
-            updateButtonStyle(activeButton, false);
-        }
-
-        System.out.println("currentMode = " + currentMode);
-        System.out.println("targetMode = " + targetMode);
-        if (currentMode == targetMode) {
-            clickedBtn.getStyleClass().remove("active");
-            activeButton = null;
-            drawMode(false);
-
-            subToolbar.setVisible(false); // 隐藏子工具栏
-            subToolbar.setManaged(false);
-        } else {
-            if (activeButton != null) {
-                activeButton.getStyleClass().remove("active");
-            }
-
-            // 激活新工具
-            drawCanvas.activateTool(targetMode);
-            clickedBtn.getStyleClass().add("active");
-            activeButton = clickedBtn;
-
-            drawCanvas.setMouseTransparent(false);
-            drawMode(true);
-            updateSubToolbarVisibility(targetMode);
-            updateButtonStyle(clickedBtn, !(currentMode == targetMode));
-        }
-    }
-
     public void drawMode(boolean drawMode) {
         parentContainer.getChildren().forEach(it -> it.setMouseTransparent(drawMode));
         drawCanvas.setMouseTransparent(!drawMode);
+
         subToolbar.setMouseTransparent(false);
         toolbar.setMouseTransparent(false);
+
+        subToolbar.setVisible(drawMode);
+        subToolbar.setManaged(drawMode);
+        if (!drawMode) {
+            activeButton.getStyleClass().remove("active");
+            activeButton = null;
+        } else {
+            colorPicker.setValue(drawCanvas.getStrokeColor());
+            sizeSlider.setValue(drawCanvas.getStrokeWidth());
+            dashedStyleBtn.setSelected(drawCanvas.isStrokeDashed());
+            activeButton.getStyleClass().add("active");
+        }
     }
 
     private void createSubToolbar() {
@@ -295,9 +267,10 @@ public class FloatingToolbar {
 
         // 颜色选择器
         colorPicker.setStyle("-fx-color-label-visible: false;");
-        colorPicker.valueProperty().addListener((obs, old, newColor) ->
-                drawCanvas.setStrokeColor(newColor)
-        );
+        colorPicker.valueProperty().addListener
+                ((obs, old, newColor) ->
+                        drawCanvas.setStrokeColor(newColor)
+                );
 
         // 大小滑块
         sizeSlider.setShowTickMarks(true);
@@ -329,41 +302,29 @@ public class FloatingToolbar {
     }
 
     private void updateSubToolbarPosition() {
-        // 水平居中：主工具栏中心X - 子工具栏宽度的一半
         subToolbar.layoutXProperty().bind(
                 toolbar.layoutXProperty().add(toolbar.widthProperty().divide(2))
                         .subtract(subToolbar.widthProperty().divide(2))
         );
 
-        // 垂直位置：主工具栏Y + 主工具栏高度 + 5px间距
         subToolbar.layoutYProperty().bind(
                 toolbar.layoutYProperty().add(toolbar.heightProperty()).add(5)
         );
     }
 
-    // 根据工具类型控制子工具栏
-    private void updateSubToolbarVisibility(DrawMode mode) {
-        boolean show = mode == DrawMode.PEN || mode == DrawMode.RECTANGLE;
-        subToolbar.setVisible(show);
-        subToolbar.setManaged(show);
-        if (show) {
-            // 同步初始值
-            colorPicker.setValue(drawCanvas.getStrokeColor());
-            sizeSlider.setValue(drawCanvas.getStrokeWidth());
-            dashedStyleBtn.setSelected(drawCanvas.isStrokeDashed());
+    public void activateTool(Button handleButton) {
+        if (activeButton != null) {
+            activeButton.getStyleClass().remove("active");
+        }
+
+        activeButton = handleButton;
+        if (currentMode != DrawMode.NONE) {
+            drawMode(true);
+        }
+        switch (currentMode) {
+            case PEN -> drawCanvas.setupPenTool();
+            case RECTANGLE -> drawCanvas.setupRectTool();
+            case NONE -> drawMode(false);
         }
     }
-
-/*    public void updateButtonStates() {
-        for (Node node : toolbar.getChildren()) {
-            if (node instanceof Button btn) {
-                DrawMode btnMode = getButtonMode(btn);
-                if (btnMode == drawCanvas.getCurrentDrawMode()) {
-                    btn.getStyleClass().add("active");
-                } else {
-                    btn.getStyleClass().remove("active");
-                }
-            }
-        }
-    }*/
 }
