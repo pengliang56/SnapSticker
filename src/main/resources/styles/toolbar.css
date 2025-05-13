@@ -38,9 +38,3 @@
     -fx-background-color: #666;
     -fx-pref-height: 4;
 }
-
-.sep {
-    -fx-background-color: #2196F3;
-    -fx-pref-width: 1px;
-    -fx-pref-height: 10px;
-}

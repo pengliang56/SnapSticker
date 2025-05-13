@@ -6,7 +6,11 @@ import javafx.beans.binding.Bindings;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.geometry.Orientation;
 import javafx.geometry.Point2D;
+import javafx.geometry.Pos;
+import javafx.scene.Cursor;
+import javafx.scene.ImageCursor;
 import javafx.scene.Scene;
+import javafx.scene.SnapshotParameters;
 import javafx.scene.control.*;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -21,6 +25,7 @@ import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
+import javafx.scene.paint.Paint;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.shape.SVGPath;
 import javafx.stage.FileChooser;
@@ -40,7 +45,7 @@ public class FloatingToolbar {
     private final HBox subToolbar = new HBox(10);
     private final ColorPicker colorPicker = new ColorPicker();
     private final Slider sizeSlider = new Slider(1, 20, 3);
-    private final ToggleButton dashedStyleBtn = new ToggleButton("虚线");
+    private final ToggleButton dashedStyleBtn = new ToggleButton("Dotted-Lines");
 
     private final Rectangle selectionArea;
     private final Pane parentContainer;
@@ -54,23 +59,22 @@ public class FloatingToolbar {
     private final ScreenshotSelector screenshotSelector;
 
     private void createButtons() {
-        Separator sep = new Separator(Orientation.VERTICAL);
-        Separator sep1 = new Separator(Orientation.VERTICAL);
-        sep.getStyleClass().add("sep");
-        sep1.getStyleClass().add("sep");
+        Separator group1Separator = createStyledSeparator();
+        Separator group2Separator = createStyledSeparator();
 
         createBrushButton();
         createRectButton();
-        toolbar.getChildren().add(sep);
+        toolbar.getChildren().add(group1Separator);
 
         createUndoButton();
         createRedoButton();
-        toolbar.getChildren().add(sep1);
+        toolbar.getChildren().add(group2Separator);
 
         createCloseButton();
         createStickerButton();
         createCopyButton();
         createSaveButton();
+        toolbar.setAlignment(Pos.CENTER_LEFT);
     }
 
     private void createRedoButton() {
@@ -125,7 +129,8 @@ public class FloatingToolbar {
             if (file != null) {
                 try {
                     ImageIO.write(SwingFXUtils.fromFXImage(snapshotScreen(), null), "png", file);
-                } catch (IOException ignored) {}
+                } catch (IOException ignored) {
+                }
             }
         });
         toolbar.getChildren().add(btn);
@@ -226,11 +231,13 @@ public class FloatingToolbar {
         if (!drawMode) {
             activeButton.getStyleClass().remove("active");
             activeButton = null;
+            drawCanvas.setCursor(Cursor.DEFAULT);
         } else {
             colorPicker.setValue(drawCanvas.getStrokeColor());
             sizeSlider.setValue(drawCanvas.getStrokeWidth());
             dashedStyleBtn.setSelected(drawCanvas.isStrokeDashed());
             activeButton.getStyleClass().add("active");
+            drawCanvas.setCursor(new ImageCursor(getDrawCursor(Color.RED), 15, 15));
         }
     }
 
@@ -277,6 +284,11 @@ public class FloatingToolbar {
                 new Separator(Orientation.VERTICAL),
                 dashedStyleBtn
         );
+
+        colorPicker.valueProperty().addListener((obs, old, newColor) -> {
+            ImageCursor ic = new ImageCursor(getDrawCursor(newColor), 15, 15);
+            drawCanvas.setCursor(ic);
+        });
 
         // 添加到父容器
         parentContainer.getChildren().add(subToolbar);
@@ -379,7 +391,7 @@ public class FloatingToolbar {
         updateSubToolbarPosition();
     }
 
-    private WritableImage snapshotScreen(){
+    private WritableImage snapshotScreen() {
         Rectangle selectionArea = screenshotSelector.getSelectionArea();
 
         // 获取屏幕选区坐标和尺寸
@@ -411,7 +423,7 @@ public class FloatingToolbar {
         WritableImage canvasImage = drawCanvas.snapshot(null, null);
 
         // 3. 合并两张图片
-        WritableImage finalImage = new WritableImage((int)width, (int)height);
+        WritableImage finalImage = new WritableImage((int) width, (int) height);
         PixelWriter writer = finalImage.getPixelWriter();
 
         // 先绘制屏幕截图
@@ -426,7 +438,7 @@ public class FloatingToolbar {
         PixelReader reader = canvasImage.getPixelReader();
         for (int i = 0; i < width; i++) {
             for (int j = 0; j < height; j++) {
-                Color color = reader.getColor((int)(x + i), (int)(y + j));
+                Color color = reader.getColor((int) (x + i), (int) (y + j));
                 if (color.getOpacity() > 0) { // 只绘制不透明的像素
                     writer.setColor(i, j, color);
                 }
@@ -434,6 +446,39 @@ public class FloatingToolbar {
         }
 
         return finalImage;
+    }
+
+    private Separator createStyledSeparator() {
+        Separator separator = new Separator(Orientation.VERTICAL);
+        separator.getStyleClass().clear();
+
+        separator.setStyle("""
+                -fx-background-color: null;
+                -fx-border-color: #a0a0a0;
+                -fx-border-width: 0 2 0 0;
+                -fx-padding: 0;
+                -fx-min-height: 20px;
+                -fx-pref-height: 20px;
+                -fx-max-height: 20px;
+                -fx-alignment: center;
+                -fx-content-display: center;
+                """);
+        return separator;
+    }
+
+    private WritableImage getDrawCursor(Paint color) {
+        String verticalCrosshair = "M15 0 L15 30 " +    // 主垂直线
+                "M0 15 L30 15 " +    // 主水平线（保持基本十字结构）
+                "M15 14 L15 16";     // 中心强化点（更细的垂直线段）
+
+        SVGPath svg = new SVGPath();
+        svg.setContent(verticalCrosshair);
+        svg.setStroke(color);
+        svg.setStrokeWidth(1.5);
+
+        SnapshotParameters params = new SnapshotParameters();
+        params.setFill(Color.TRANSPARENT);
+        return svg.snapshot(params, null);
     }
 
     public FloatingToolbar(Rectangle selectionArea, Pane parentContainer, DrawCanvas drawCanvasArea, ScreenshotSelector screenshotSelector) {
