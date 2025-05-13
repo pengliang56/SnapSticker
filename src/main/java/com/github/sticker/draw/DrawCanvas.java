@@ -20,6 +20,8 @@ public class DrawCanvas extends Pane {
     private Point2D lastSampledPoint;
 
     private Rectangle currentRectangle;
+    private double startX, startY;
+
     private Color strokeColor = Color.RED;
     private double strokeWidth = 2;
     private boolean strokeDashed = false;
@@ -63,11 +65,9 @@ public class DrawCanvas extends Pane {
             points.add(lastSampledPoint);
 
             currentPath = new Path();
-            if (strokeDashed) {
-                currentPath.getStrokeDashArray().setAll(5d, 10d);
-            } else {
-                currentPath.getStrokeDashArray().clear();
-            }
+            if (strokeDashed) currentPath.getStrokeDashArray().setAll(5d, 10d);
+
+
             currentPath.setStroke(strokeColor);
             currentPath.setStrokeWidth(strokeWidth);
             currentPath.getElements().add(new MoveTo(e.getX(), e.getY()));
@@ -118,18 +118,15 @@ public class DrawCanvas extends Pane {
             currentRectangle.setStroke(strokeColor);
             currentRectangle.setFill(Color.TRANSPARENT);
             currentRectangle.setStrokeWidth(strokeWidth);
+
+            startX = e.getX();
+            startY = e.getY();
+            currentRectangle.setX(startX);
+            currentRectangle.setY(startY);
             currentRectangle.setWidth(0);
             currentRectangle.setHeight(0);
 
-            currentRectangle.setX(e.getX());
-            currentRectangle.setY(e.getY());
-
-            if (strokeDashed) {
-                currentRectangle.getStrokeDashArray().setAll(5d, 10d);
-            } else {
-                currentRectangle.getStrokeDashArray().clear();
-            }
-
+            if (strokeDashed) currentRectangle.getStrokeDashArray().setAll(5d, 10d);
             if (!getChildren().contains(currentRectangle)) {
                 getChildren().add(currentRectangle);
             }
@@ -137,8 +134,18 @@ public class DrawCanvas extends Pane {
 
         this.setOnMouseDragged(e -> {
             if (currentRectangle != null) {
-                currentRectangle.setWidth(Math.abs(e.getX() - currentRectangle.getX()));
-                currentRectangle.setHeight(Math.abs(e.getY() - currentRectangle.getY()));
+                double currentX = e.getX();
+                double currentY = e.getY();
+
+                double newX = Math.min(startX, currentX);
+                double newY = Math.min(startY, currentY);
+                double newWidth = Math.abs(currentX - startX);
+                double newHeight = Math.abs(currentY - startY);
+
+                currentRectangle.setX(newX);
+                currentRectangle.setY(newY);
+                currentRectangle.setWidth(newWidth);
+                currentRectangle.setHeight(newHeight);
             }
         });
 

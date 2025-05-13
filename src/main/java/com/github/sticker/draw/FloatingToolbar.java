@@ -1,6 +1,5 @@
 package com.github.sticker.draw;
 
-import com.github.sticker.screenshot.ScreenshotSelector;
 import javafx.animation.FadeTransition;
 import javafx.beans.binding.Bindings;
 import javafx.geometry.Orientation;
@@ -19,16 +18,6 @@ import javafx.util.Duration;
 import java.util.Objects;
 
 public class FloatingToolbar {
-    private static final String[] BUTTON_ICONS = {
-            // 保存图标（SVG路径）
-            "M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z",
-            // 画笔图标
-            "M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z",
-            // 矩形图标
-            "M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z",
-            // 贴图图标（图钉）
-            "M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"
-    };
     private DrawMode currentMode = DrawMode.NONE;
 
     private final HBox toolbar = new HBox(8);
@@ -46,98 +35,88 @@ public class FloatingToolbar {
     private final DrawCanvas drawCanvas;
     private Button activeButton;
 
-    public FloatingToolbar(Rectangle selectionArea, Pane parentContainer, DrawCanvas drawCanvasArea, ScreenshotSelector screenshotSelector) {
-        this.drawCanvas = drawCanvasArea;
-        this.selectionArea = selectionArea;
-        this.parentContainer = parentContainer;
-        initializeToolbar();
-        createSubToolbar();
-        parentContainer.getChildren().add(toolbar);
-    }
-
-    private void initializeToolbar() {
-        baseStyle();
-        createButtons();
-        setupBottomPositionBinding();
-        setupKeyboardToggle();
-
-        // 加载CSS样式
-        toolbar.getStylesheets().add(
-                Objects.requireNonNull(getClass().getResource("/styles/toolbar.css")).toExternalForm()
-        );
-        toolbar.getStyleClass().add("toolbar");
-        toolbar.setPickOnBounds(false);
-    }
-
-    private void setupBottomPositionBinding() {
-        toolbar.layoutXProperty().bind(
-                Bindings.createDoubleBinding(() ->
-                                selectionArea.getX() + (selectionArea.getWidth() / 2) - (toolbar.getWidth() / 2),
-                        selectionArea.xProperty(), selectionArea.widthProperty(), toolbar.widthProperty()
-                )
-        );
-
-        // Y轴位置：选区底部 + 10px 间距
-        toolbar.layoutYProperty().bind(
-                selectionArea.yProperty()
-                        .add(selectionArea.heightProperty())
-                        .add(10)
-        );
-
-        // X轴定位（保持居中且防止左右溢出）
-        toolbar.layoutXProperty().bind(
-                Bindings.createDoubleBinding(() -> {
-                            // 计算理想居中位置
-                            double idealX = selectionArea.getX() +
-                                    (selectionArea.getWidth() - toolbar.getWidth()) / 2;
-
-                            // 边界约束
-                            double minX = 5;
-                            double maxX = parentContainer.getWidth() - toolbar.getWidth() - 5;
-
-                            return Math.max(minX, Math.min(idealX, maxX));
-                        }, selectionArea.xProperty(), selectionArea.widthProperty(),
-                        toolbar.widthProperty(), parentContainer.widthProperty())
-        );
-
-        // Y轴动态定位（上下自动切换）
-        toolbar.layoutYProperty().bind(
-                Bindings.createDoubleBinding(() -> {
-                            // 基础参数计算
-                            double selectionBottom = selectionArea.getY() + selectionArea.getHeight();
-                            double toolbarHeight = toolbar.getHeight();
-                            double parentHeight = parentContainer.getHeight();
-
-                            // 默认下方位置
-                            double bottomPosition = selectionBottom + 10;
-
-                            // 上方位置
-                            double topPosition = selectionArea.getY() - toolbarHeight - 10;
-
-                            // 检测下方空间是否足够
-                            boolean canShowBelow = (bottomPosition + toolbarHeight) < (parentHeight - 5);
-
-                            // 智能选择显示位置
-                            return canShowBelow ? bottomPosition : topPosition;
-                        }, selectionArea.yProperty(), selectionArea.heightProperty(),
-                        parentContainer.heightProperty(), toolbar.heightProperty())
-        );
-        updateSubToolbarPosition();
-    }
-
     private void createButtons() {
-        createSaveButton();
+        Separator sep = new Separator(Orientation.VERTICAL);
+        Separator sep1 = new Separator(Orientation.VERTICAL);
+        sep.getStyleClass().add("sep");
+        sep1.getStyleClass().add("sep");
+
         createBrushButton();
         createRectButton();
+        toolbar.getChildren().add(sep);
+
+        createUndoButton();
+        createRedoButton();
+        toolbar.getChildren().add(sep1);
+
+        createCloseButton();
         createStickerButton();
+        createCopyButton();
+        createSaveButton();
     }
 
-    private void updateButtonStyle(Button button, boolean isActive) {
-        if (isActive) {
-            button.getStyleClass().add("active");
-        } else {
-            button.getStyleClass().remove("active");
-        }
+    private void createRedoButton() {
+        Button btn = createIconButton(Icon.redo, "Redo");
+        btn.setOnAction(e -> System.out.println("Redo"));
+        toolbar.getChildren().add(btn);
+    }
+
+    private void createUndoButton() {
+        Button btn = createIconButton(Icon.undo, "Undo");
+        btn.setOnAction(e -> System.out.println("Undo"));
+        toolbar.getChildren().add(btn);
+    }
+
+    private void createCopyButton() {
+        Button btn = createIconButton(Icon.copy, "Copy to Clipboard");
+        btn.setOnAction(e -> System.out.println("Copy"));
+        toolbar.getChildren().add(btn);
+    }
+
+    private void createCloseButton() {
+        Button btn = createIconButton(Icon.clode, "Close");
+        btn.setOnAction(e -> System.out.println("Close"));
+        toolbar.getChildren().add(btn);
+    }
+
+    private void createSaveButton() {
+        Button btn = createIconButton(Icon.save, "Save to file");
+        btn.setOnAction(e -> System.out.println("Save"));
+        toolbar.getChildren().add(btn);
+    }
+
+    private void createBrushButton() {
+        penButton = createIconButton(Icon.pencil, "Pencil");
+        penButton.setOnAction(e -> {
+            currentMode = DrawMode.switchMode(currentMode, DrawMode.PEN);
+            activateTool(penButton);
+        });
+        toolbar.getChildren().add(penButton);
+    }
+
+    private void createRectButton() {
+        rectButton = createIconButton(Icon.rectangle, "Rectangle");
+        rectButton.setOnAction(e -> {
+            currentMode = DrawMode.switchMode(currentMode, DrawMode.RECTANGLE);
+            activateTool(rectButton);
+        });
+        toolbar.getChildren().add(rectButton);
+    }
+
+    private void createStickerButton() {
+        Button btn = createIconButton(Icon.tuding, "Pin to screen(F3)");
+        btn.setOnAction(e -> System.out.println("打开贴图库"));
+        toolbar.getChildren().add(btn);
+    }
+
+    private void setupKeyboardToggle() {
+        Scene scene = parentContainer.getScene();
+        scene.addEventHandler(KeyEvent.KEY_PRESSED, e -> {
+            if (e.getCode() == KeyCode.SPACE) {
+                toggleVisibility();
+                e.consume();
+            }
+        });
     }
 
     private Button createIconButton(String svgPath, String tooltipText) {
@@ -149,7 +128,6 @@ public class FloatingToolbar {
 
         btn.getStyleClass().add("tool-button");
 
-        // 悬停效果
         DropShadow hover = new DropShadow(5, Color.gray(0.3));
         btn.setOnMouseEntered(e -> {
             btn.setEffect(hover);
@@ -160,46 +138,6 @@ public class FloatingToolbar {
 
         Tooltip.install(btn, new Tooltip(tooltipText));
         return btn;
-    }
-
-    private void createSaveButton() {
-        Button btn = createIconButton(BUTTON_ICONS[0], "保存截图");
-        btn.setOnAction(e -> System.out.println("执行保存操作"));
-        toolbar.getChildren().add(btn);
-    }
-
-    private void createBrushButton() {
-        penButton = createIconButton(BUTTON_ICONS[1], "Pencil");
-        penButton.setOnAction(e -> {
-            currentMode = DrawMode.switchMode(currentMode, DrawMode.PEN);
-            activateTool(penButton);
-        });
-        toolbar.getChildren().add(penButton);
-    }
-
-    private void createRectButton() {
-        rectButton = createIconButton(BUTTON_ICONS[2], "Rectangle");
-        rectButton.setOnAction(e -> {
-            currentMode = DrawMode.switchMode(currentMode, DrawMode.RECTANGLE);
-            activateTool(rectButton);
-        });
-        toolbar.getChildren().add(rectButton);
-    }
-
-    private void createStickerButton() {
-        Button btn = createIconButton(Icon.tuding, "添加贴图");
-        btn.setOnAction(e -> System.out.println("打开贴图库"));
-        toolbar.getChildren().add(btn);
-    }
-
-    private void setupKeyboardToggle() {
-        Scene scene = parentContainer.getScene();
-        scene.addEventHandler(KeyEvent.KEY_PRESSED, e -> {
-            if (e.getCode() == KeyCode.SPACE) {
-                toggleVisibility();
-                e.consume(); // 阻止事件冒泡
-            }
-        });
     }
 
     private void toggleVisibility() {
@@ -323,5 +261,84 @@ public class FloatingToolbar {
             case RECTANGLE -> drawCanvas.setupRectTool();
             case NONE -> drawMode(false);
         }
+    }
+
+    private void initializeToolbar() {
+        toolbar.getStylesheets().add(
+                Objects.requireNonNull(getClass().getResource("/styles/toolbar.css")).toExternalForm()
+        );
+
+        baseStyle();
+        createButtons();
+        setupBottomPositionBinding();
+        setupKeyboardToggle();
+
+        toolbar.getStyleClass().add("toolbar");
+        toolbar.setPickOnBounds(false);
+    }
+
+    private void setupBottomPositionBinding() {
+        toolbar.layoutXProperty().bind(
+                Bindings.createDoubleBinding(() ->
+                                selectionArea.getX() + (selectionArea.getWidth() / 2) - (toolbar.getWidth() / 2),
+                        selectionArea.xProperty(), selectionArea.widthProperty(), toolbar.widthProperty()
+                )
+        );
+
+        // Y轴位置：选区底部 + 10px 间距
+        toolbar.layoutYProperty().bind(
+                selectionArea.yProperty()
+                        .add(selectionArea.heightProperty())
+                        .add(10)
+        );
+
+        // X轴定位（保持居中且防止左右溢出）
+        toolbar.layoutXProperty().bind(
+                Bindings.createDoubleBinding(() -> {
+                            // 计算理想居中位置
+                            double idealX = selectionArea.getX() +
+                                    (selectionArea.getWidth() - toolbar.getWidth()) / 2;
+
+                            // 边界约束
+                            double minX = 5;
+                            double maxX = parentContainer.getWidth() - toolbar.getWidth() - 5;
+
+                            return Math.max(minX, Math.min(idealX, maxX));
+                        }, selectionArea.xProperty(), selectionArea.widthProperty(),
+                        toolbar.widthProperty(), parentContainer.widthProperty())
+        );
+
+        // Y轴动态定位（上下自动切换）
+        toolbar.layoutYProperty().bind(
+                Bindings.createDoubleBinding(() -> {
+                            // 基础参数计算
+                            double selectionBottom = selectionArea.getY() + selectionArea.getHeight();
+                            double toolbarHeight = toolbar.getHeight();
+                            double parentHeight = parentContainer.getHeight();
+
+                            // 默认下方位置
+                            double bottomPosition = selectionBottom + 10;
+
+                            // 上方位置
+                            double topPosition = selectionArea.getY() - toolbarHeight - 10;
+
+                            // 检测下方空间是否足够
+                            boolean canShowBelow = (bottomPosition + toolbarHeight) < (parentHeight - 5);
+
+                            // 智能选择显示位置
+                            return canShowBelow ? bottomPosition : topPosition;
+                        }, selectionArea.yProperty(), selectionArea.heightProperty(),
+                        parentContainer.heightProperty(), toolbar.heightProperty())
+        );
+        updateSubToolbarPosition();
+    }
+
+    public FloatingToolbar(Rectangle selectionArea, Pane parentContainer, DrawCanvas drawCanvasArea) {
+        this.drawCanvas = drawCanvasArea;
+        this.selectionArea = selectionArea;
+        this.parentContainer = parentContainer;
+        initializeToolbar();
+        createSubToolbar();
+        parentContainer.getChildren().add(toolbar);
     }
 }

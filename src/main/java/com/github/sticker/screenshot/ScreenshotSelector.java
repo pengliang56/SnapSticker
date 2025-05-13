@@ -470,7 +470,7 @@ public class ScreenshotSelector {
             root.getChildren().remove(floatingToolbar.getToolbar());
             floatingToolbar = null;
         }
-        floatingToolbar = new FloatingToolbar(selectionBorder, root, drawCanvasArea, this);
+        floatingToolbar = new FloatingToolbar(selectionBorder, root, drawCanvasArea);
     }
 
     /**
