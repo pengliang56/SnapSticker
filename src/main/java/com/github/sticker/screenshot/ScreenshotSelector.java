@@ -240,7 +240,7 @@ public class ScreenshotSelector {
      */
     private Rectangle createBaseMask() {
         Rectangle mask = new Rectangle();
-        mask.setFill(Color.color(0, 0, 0, MASK_OPACITY));
+        mask.setFill(Color.color(0, 0, 0, 0));
         mask.setMouseTransparent(false);
         return mask;
     }
@@ -300,11 +300,12 @@ public class ScreenshotSelector {
         // Update the mask in the scene
         Shape mask = Shape.subtract(fullscreenMask, selectionArea);
         addBorder(mask);
-        mask.setFill(Color.color(0, 0, 0, MASK_OPACITY));
         root.getChildren().set(1, mask);
     }
 
     private void addBorder(Shape mask) {
+        mask.setFill(Color.color(0, 0, 0, 0.01));
+        mask.setMouseTransparent(false);
         mask.setStroke(Color.RED);
         mask.setStrokeWidth(2);
         mask.setStrokeType(StrokeType.INSIDE);
@@ -330,16 +331,13 @@ public class ScreenshotSelector {
                     taskbarBounds.getWidth(),
                     taskbarBounds.getHeight()
             );
-
             // Subtract the taskbar area from the base mask
             Shape mask = Shape.subtract(fullscreenMask, taskbarCutout);
-            mask.setFill(Color.color(0, 0, 0, MASK_OPACITY));
             addBorder(mask);
             root.getChildren().set(1, mask);
         } else {
             // If no taskbar, just use the base mask
             Shape mask = Shape.subtract(fullscreenMask, selectionArea);
-            mask.setFill(Color.color(0, 0, 0, MASK_OPACITY));
             addBorder(mask);
             root.getChildren().set(1, mask);
         }
@@ -428,6 +426,7 @@ public class ScreenshotSelector {
     private void setupMouseHandlers(Scene scene) {
         scene.setOnMousePressed(event -> {
             if (isSelecting) {
+                fullscreenMask.setFill(Color.color(0, 0, 0, MASK_OPACITY));
                 scene.setCursor(javafx.scene.Cursor.CROSSHAIR);
                 startX = event.getScreenX();
                 startY = event.getScreenY();
