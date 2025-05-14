@@ -11,13 +11,7 @@ import javafx.application.Platform;
 import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.io.File;
 import java.io.InputStream;
-import java.io.RandomAccessFile;
-import java.nio.channels.FileChannel;
-import java.nio.channels.FileLock;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 
 /**
  * Manages the system tray functionality for the application.
@@ -26,11 +20,7 @@ import java.nio.file.Paths;
 public class SystemTrayManager {
     private final ScreenshotSelector screenshotSelector;
     private TrayIcon trayIcon;
-    private FileLock lock;
-    private FileChannel channel;
-    private static final String LOCK_FILE = System.getProperty("user.home") + "/.snapsticker.lock";
-    private boolean isShuttingDown = false;
-    private SystemTray tray;
+    private final SystemTray tray;
 
     // Icon paths
     private static final String ICON_PATH = "/tray_icon.png";  // 16x16 PNG
@@ -65,92 +55,10 @@ public class SystemTrayManager {
     }
 
     /**
-     * Check if another instance is running and handle it
-     *
-     * @return true if this is the only instance, false if another instance exists
-     */
-    private boolean checkAndHandleExistingInstance() {
-        try {
-            // Create lock file if it doesn't exist
-            File lockFile = new File(LOCK_FILE);
-            if (!lockFile.exists()) {
-                lockFile.createNewFile();
-            }
-
-            // Try to acquire lock
-            channel = new RandomAccessFile(lockFile, "rw").getChannel();
-            lock = channel.tryLock();
-
-            if (lock == null) {
-                // Another instance is running
-                System.out.println("Another instance is running. Attempting to close it...");
-
-                // Read the PID from the lock file
-                String pid = new String(Files.readAllBytes(Paths.get(LOCK_FILE))).trim();
-                if (!pid.isEmpty()) {
-                    try {
-                        // Try to kill the existing process
-                        if (System.getProperty("os.name").toLowerCase().contains("windows")) {
-                            Runtime.getRuntime().exec("taskkill /F /PID " + pid);
-                        } else {
-                            Runtime.getRuntime().exec("kill -9 " + pid);
-                        }
-                        // Wait a bit for the process to terminate
-                        Thread.sleep(1000);
-                    } catch (Exception e) {
-                        System.err.println("Failed to terminate existing instance: " + e.getMessage());
-                    }
-                }
-
-                // Try to acquire lock again
-                lock = channel.tryLock();
-                if (lock == null) {
-                    System.err.println("Could not acquire lock after attempting to close existing instance");
-                    return false;
-                }
-            }
-
-            // Write our PID to the lock file
-            String pid = String.valueOf(ProcessHandle.current().pid());
-            channel.truncate(0);
-            channel.write(java.nio.ByteBuffer.wrap(pid.getBytes()));
-
-            return true;
-        } catch (Exception e) {
-            System.err.println("Error checking for existing instance: " + e.getMessage());
-            return false;
-        }
-    }
-
-    /**
-     * Release the lock file
-     */
-    private void releaseLock() {
-        try {
-            if (lock != null) {
-                lock.release();
-            }
-            if (channel != null) {
-                channel.close();
-            }
-            // Delete the lock file
-            Files.deleteIfExists(Paths.get(LOCK_FILE));
-        } catch (Exception e) {
-            System.err.println("Error releasing lock: " + e.getMessage());
-        }
-    }
-
-    /**
      * Initialize the system tray with icon and menu items
      */
     public void initialize() {
         Platform.setImplicitExit(false);
-        // Check for existing instance first
-        if (!checkAndHandleExistingInstance()) {
-            System.err.println("Could not start application: Another instance is running");
-            Platform.exit();
-            return;
-        }
 
         if (!SystemTray.isSupported()) {
             System.err.println("System tray is not supported");
@@ -229,8 +137,6 @@ public class SystemTrayManager {
             // Add to system tray
             tray.add(trayIcon);
         } catch (Exception e) {
-            System.err.println("Failed to initialize system tray: " + e.getMessage());
-            e.printStackTrace();
             Platform.exit();
         }
     }
@@ -267,7 +173,6 @@ public class SystemTrayManager {
 
         } catch (Exception e) {
             System.err.println("Failed to load tray icon: " + e.getMessage());
-            e.printStackTrace();
             return null;
         }
     }
@@ -287,29 +192,6 @@ public class SystemTrayManager {
         if (trayIcon != null) {
             SystemTray.getSystemTray().remove(trayIcon);
             trayIcon = null;
-        }
-        releaseLock();
-    }
-
-    /**
-     * Exit the application
-     * This method ensures proper cleanup of resources before exit
-     */
-    private void exitApplication() {
-        if (isShuttingDown) {
-            return; // Prevent multiple exit calls
-        }
-        isShuttingDown = true;
-
-        try {
-            cleanup();
-            Platform.exit();
-            System.exit(0);
-        } catch (Exception e) {
-            System.err.println("Error during application shutdown: " + e.getMessage());
-            e.printStackTrace();
-            // Force exit if cleanup fails
-            System.exit(1);
         }
     }
 } 

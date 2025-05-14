@@ -10,13 +10,15 @@ import com.github.kwhat.jnativehook.GlobalScreen;
 import com.github.kwhat.jnativehook.NativeHookException;
 import com.github.sticker.screenshot.HookKeyListener;
 import com.github.sticker.screenshot.ScreenshotSelector;
-import com.github.sticker.util.ScreenManager;
 import com.github.sticker.screenshot.SystemTrayManager;
+import com.github.sticker.util.ScreenManager;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.stage.Stage;
 
 import java.awt.*;
+import java.io.IOException;
+import java.net.ServerSocket;
 
 /**
  * Main application class for the Screenshot Sticker tool.
@@ -47,6 +49,7 @@ public class ScreenshotStickerApp extends Application {
         if (!SystemTray.isSupported()) {
             Platform.exit();
         } else {
+            checkAndHandleExistingInstance();
             // Initialize screen manager
             ScreenManager screenManager = new ScreenManager();
             setupPrimaryStage(primaryStage);
@@ -81,8 +84,17 @@ public class ScreenshotStickerApp extends Application {
 
         try {
             GlobalScreen.unregisterNativeHook();
-        } catch (NativeHookException e) {
-            e.printStackTrace();
+        } catch (NativeHookException ignored) {
+
+        }
+    }
+
+    @SuppressWarnings("all")
+    private void checkAndHandleExistingInstance() {
+        try {
+            new ServerSocket(12345);
+        } catch (IOException e) {
+            System.exit(0);
         }
     }
 }

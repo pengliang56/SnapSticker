@@ -3,14 +3,14 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.github.mo</groupId>
     <artifactId>snapshot</artifactId>
-    <version>1.0-SNAPSHOT</version>
-    <name>Archetype - snapshot</name>
+    <version>1.0</version>
+    <name>SnapSticker</name>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>17</maven.compiler.release>
         <javafx.version>21.0.2</javafx.version>
-        <project.name>SnapSticker</project.name>
+        <main.class>com.github.sticker.ScreenshotStickerApp</main.class>
     </properties>
 
     <description>
@@ -39,30 +39,35 @@
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-controls</artifactId>
             <version>${javafx.version}</version>
+            <classifier>win</classifier>
         </dependency>
         <!-- JavaFX graphics -->
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-graphics</artifactId>
             <version>${javafx.version}</version>
+            <classifier>win</classifier>
         </dependency>
         <!-- JavaFX base -->
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-base</artifactId>
             <version>${javafx.version}</version>
+            <classifier>win</classifier>
         </dependency>
         <!-- JavaFX FXML -->
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-fxml</artifactId>
             <version>${javafx.version}</version>
+            <classifier>win</classifier>
         </dependency>
         <!-- JavaFX swing support -->
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-swing</artifactId>
             <version>${javafx.version}</version>
+            <classifier>win</classifier>
         </dependency>
         <dependency>
             <groupId>com.github.kwhat</groupId>
@@ -84,13 +89,12 @@
 
     <build>
         <plugins>
-            <!-- JavaFX Maven Plugin -->
             <plugin>
                 <groupId>org.openjfx</groupId>
                 <artifactId>javafx-maven-plugin</artifactId>
                 <version>0.0.8</version>
                 <configuration>
-                    <mainClass>com.github.sticker.ScreenshotStickerApp</mainClass>
+                    <mainClass>${main.class}</mainClass>
                 </configuration>
             </plugin>
             <plugin>
@@ -99,6 +103,54 @@
                 <version>3.10.1</version>
                 <configuration>
                     <release>17</release>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.6.0</version>
+                <executions>
+                    <execution>
+                        <id>copy-dependencies</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/lib</outputDirectory>
+                            <includeScope>runtime</includeScope>
+                            <includeArtifactIds>javafx-*,jna,jna-platform,jnativehook</includeArtifactIds>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>com.akathist.maven.plugins.launch4j</groupId>
+                <artifactId>launch4j-maven-plugin</artifactId>
+                <version>2.1.1</version>
+                <configuration>
+                    <headerType>gui</headerType>
+                    <outfile>${project.build.directory}/${project.name}.exe</outfile>
+                    <jar>${project.build.directory}/${project.name}.jar</jar>
+                    <icon>src/main/resources/icon.ico</icon>
+                    <jre>
+                        <minVersion>17</minVersion>
+                        <maxVersion>17.0.99</maxVersion>
+                        <runtimeBits>64</runtimeBits>
+                        <jdkPreference>preferJdk</jdkPreference>
+                        <path>${env.JAVA_HOME}</path>
+                        <opts>
+                            <opt>--module-path</opt>
+                            <opt>"${project.build.directory}/lib;${env.JAVA_HOME}/jmods"</opt>
+                            <opt>--add-modules</opt>
+                            <opt>com.github.sticker</opt>
+                            <opt>-Djava.library.path=lib</opt>
+                            <opt>-Djavafx.verbose=true</opt>
+                        </opts>
+                    </jre>
+                    <classPath>
+                        <mainClass>com.github.sticker/$｛main.class｝</mainClass>
+                    </classPath>
                 </configuration>
             </plugin>
         </plugins>
