@@ -4,7 +4,7 @@ public enum DrawMode {
     NONE,
     PEN,
     RECTANGLE,
-    ARROW,
+    LINE,
     ;
 
     public static DrawMode switchMode(DrawMode currentMode, DrawMode handler) {

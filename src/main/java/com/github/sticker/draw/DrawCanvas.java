@@ -4,12 +4,10 @@ import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.geometry.Point2D;
 import javafx.scene.Node;
+import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.MoveTo;
-import javafx.scene.shape.Path;
-import javafx.scene.shape.QuadCurveTo;
-import javafx.scene.shape.Rectangle;
+import javafx.scene.shape.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -140,6 +138,57 @@ public class DrawCanvas extends Pane {
             }
             saveState(currentPath);
             currentPath = null;
+        });
+    }
+
+    public void setupLineTool() {
+        final double[] startX = new double[1];
+        final double[] startY = new double[1];
+        final Line[] previewLine = new Line[1];
+    
+        this.setOnMousePressed(e -> {
+            startX[0] = e.getX();
+            startY[0] = e.getY();
+
+            previewLine[0] = new Line(
+                startX[0], startY[0],
+                startX[0], startY[0]
+            );
+
+            previewLine[0].setStroke(getStrokeColor());
+            previewLine[0].setStrokeWidth(getStrokeWidth());
+            if (isStrokeDashed()) {
+                previewLine[0].getStrokeDashArray().addAll(5d, 5d);
+            }
+
+            getChildren().add(previewLine[0]);
+        });
+    
+        this.setOnMouseDragged(e -> {
+            if (previewLine[0] != null) {
+                previewLine[0].setEndX(e.getX());
+                previewLine[0].setEndY(e.getY());
+            }
+        });
+    
+        this.setOnMouseReleased(e -> {
+            if (previewLine[0] != null) {
+                Line finalLine = new Line(
+                    startX[0], startY[0],
+                    e.getX(), e.getY()
+                );
+
+                finalLine.setStroke(getStrokeColor());
+                finalLine.setStrokeWidth(getStrokeWidth());
+                if (isStrokeDashed()) {
+                    finalLine.getStrokeDashArray().addAll(5d, 5d);
+                }
+
+                getChildren().remove(previewLine[0]);
+                getChildren().add(finalLine);
+                saveState(finalLine);
+                previewLine[0] = null;
+            }
         });
     }
 

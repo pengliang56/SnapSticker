@@ -7,10 +7,8 @@ import javafx.embed.swing.SwingFXUtils;
 import javafx.geometry.Orientation;
 import javafx.geometry.Point2D;
 import javafx.geometry.Pos;
+import javafx.scene.*;
 import javafx.scene.Cursor;
-import javafx.scene.ImageCursor;
-import javafx.scene.Scene;
-import javafx.scene.SnapshotParameters;
 import javafx.scene.control.*;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -45,7 +43,6 @@ public class FloatingToolbar {
     private final HBox subToolbar = new HBox(10);
     private final ColorPicker colorPicker = new ColorPicker();
     private final Slider sizeSlider = new Slider(1, 20, 3);
-    private final ToggleButton dashedStyleBtn = new ToggleButton("Dotted-Lines");
 
     private final Rectangle selectionArea;
     private final Pane parentContainer;
@@ -53,6 +50,7 @@ public class FloatingToolbar {
 
     private Button penButton;
     private Button rectButton;
+    private Button lineButton;
     private final DrawCanvas drawCanvas;
     private Button activeButton;
 
@@ -63,6 +61,7 @@ public class FloatingToolbar {
         Separator group2Separator = createStyledSeparator();
 
         createBrushButton();
+        createLineButton();
         createRectButton();
         toolbar.getChildren().add(group1Separator);
 
@@ -70,11 +69,20 @@ public class FloatingToolbar {
         createRedoButton();
         toolbar.getChildren().add(group2Separator);
 
-        createCloseButton();
+        // createCloseButton();
         createStickerButton();
         createCopyButton();
         createSaveButton();
         toolbar.setAlignment(Pos.CENTER_LEFT);
+    }
+
+    private void createLineButton() {
+        lineButton = createIconButton(Icon.line, "Line (L)");
+        lineButton.setOnAction(e -> {
+            currentMode = DrawMode.switchMode(currentMode, DrawMode.LINE);
+            activateTool(lineButton);
+        });
+        toolbar.getChildren().add(lineButton);
     }
 
     private void createRedoButton() {
@@ -174,7 +182,9 @@ public class FloatingToolbar {
         Button btn = new Button();
         SVGPath icon = new SVGPath();
         icon.setContent(svgPath);
-        icon.setFill(Color.WHITE);
+        icon.setStroke(Color.WHITE);
+        icon.setFill(Color.TRANSPARENT);
+        icon.setStrokeWidth(2);
         btn.setGraphic(icon);
 
         btn.getStyleClass().add("tool-button");
@@ -235,7 +245,6 @@ public class FloatingToolbar {
         } else {
             colorPicker.setValue(drawCanvas.getStrokeColor());
             sizeSlider.setValue(drawCanvas.getStrokeWidth());
-            dashedStyleBtn.setSelected(drawCanvas.isStrokeDashed());
             activeButton.getStyleClass().add("active");
             drawCanvas.setCursor(new ImageCursor(getDrawCursor(Color.RED), 15, 15));
         }
@@ -243,55 +252,133 @@ public class FloatingToolbar {
 
     private void createSubToolbar() {
         subToolbar.setPickOnBounds(false);
-        subToolbar.setStyle(toolbar.getStyle() + "-fx-padding: 6 12 6 12;");
+        subToolbar.setSpacing(16);
+        subToolbar.setAlignment(Pos.CENTER);
+
+        // 基础样式
+        subToolbar.setStyle("""
+            -fx-background-color: rgba(45, 45, 45, 0.95);
+            -fx-background-radius: 8;
+            -fx-padding: 8 16;
+            -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 10, 0, 0, 2);
+            """);
+
         subToolbar.setVisible(false);
-        subToolbar.setManaged(false); // 不参与布局计算
-        subToolbar.getStyleClass().add("sub-toolbar");
+        subToolbar.setManaged(false);
 
-        // 加载CSS样式
-        subToolbar.getStylesheets().add(
-                Objects.requireNonNull(getClass().getResource("/styles/toolbar.css")).toExternalForm()
-        );
-
-        // 颜色选择器
-        colorPicker.setStyle("-fx-color-label-visible: false;");
-        colorPicker.valueProperty().addListener
-                ((obs, old, newColor) ->
-                        drawCanvas.setStrokeColor(newColor)
-                );
-
-        // 大小滑块
-        sizeSlider.setShowTickMarks(true);
-        sizeSlider.setMajorTickUnit(5);
-        sizeSlider.setMinorTickCount(4);
+        // 大小滑块美化
+        sizeSlider.setStyle("""
+            -fx-pref-width: 100;
+            """);
+        sizeSlider.setShowTickLabels(false);
+        sizeSlider.setShowTickMarks(false);
         sizeSlider.valueProperty().addListener((obs, old, newSize) ->
                 drawCanvas.setStrokeWidth(newSize.doubleValue())
         );
-        Label sizeLabel = new Label("Size:");
-        sizeLabel.setTextFill(Color.WHITE);
 
-        // 虚线样式
-        dashedStyleBtn.setTextFill(Color.WHITE);
-        dashedStyleBtn.selectedProperty().addListener((obs, old, newVal) ->
-                drawCanvas.setStrokeDashed(newVal)
-        );
+        // 创建颜色快速选择按钮组
+        HBox colorButtons = createColorButtons();
+
+        // 创建分隔符
+        Separator separator = createStyledSeparator();
 
         // 布局组装
         subToolbar.getChildren().addAll(
-                sizeLabel, sizeSlider,
-                new Separator(Orientation.VERTICAL),
-                colorPicker,
-                new Separator(Orientation.VERTICAL),
-                dashedStyleBtn
+                sizeSlider,
+                separator,
+                colorButtons
         );
 
-        colorPicker.valueProperty().addListener((obs, old, newColor) -> {
-            ImageCursor ic = new ImageCursor(getDrawCursor(newColor), 15, 15);
+        parentContainer.getChildren().add(subToolbar);
+    }
+
+    private HBox createColorButtons() {
+        HBox colorBox = new HBox(4);
+        colorBox.setAlignment(Pos.CENTER);
+
+        // 预定义颜色数组
+        Color[] colors = {
+                Color.WHITE,
+                Color.RED,
+                Color.ORANGE,
+                Color.YELLOW,
+                Color.GREEN,
+                Color.BLUE,
+                Color.PURPLE,
+                Color.BLACK
+        };
+
+        // 创建颜色按钮
+        for (Color color : colors) {
+            Button colorBtn = createColorButton(color);
+            colorBox.getChildren().add(colorBtn);
+        }
+
+        return colorBox;
+    }
+
+    private Button createColorButton(Color color) {
+        Button btn = new Button();
+        btn.setMinSize(20, 20);
+        btn.setPrefSize(20, 20);
+        btn.setMaxSize(20, 20);
+
+        // 按钮样式
+        btn.setStyle(String.format("""
+            -fx-background-color: %s;
+            -fx-background-radius: 4;
+            -fx-border-color: rgba(255,255,255,0.3);
+            -fx-border-radius: 4;
+            -fx-border-width: 1;
+            """, toRGBA(color)));
+
+        // 点击事件
+        btn.setOnAction(e -> {
+            drawCanvas.setStrokeColor(color);
+            ImageCursor ic = new ImageCursor(getDrawCursor(color), 15, 15);
             drawCanvas.setCursor(ic);
+
+            // 更新所有颜色按钮的边框
+            updateColorButtonsBorder(btn);
         });
 
-        // 添加到父容器
-        parentContainer.getChildren().add(subToolbar);
+        // 鼠标悬停效果
+        btn.setOnMouseEntered(e ->
+                btn.setStyle(btn.getStyle() + "-fx-effect: dropshadow(gaussian, rgba(255,255,255,0.3), 5, 0, 0, 0);")
+        );
+
+        btn.setOnMouseExited(e ->
+                btn.setStyle(btn.getStyle().replace("-fx-effect: dropshadow(gaussian, rgba(255,255,255,0.3), 5, 0, 0, 0);", ""))
+        );
+
+        return btn;
+    }
+
+    private void updateColorButtonsBorder(Button selectedBtn) {
+        // 更新所有颜色按钮的边框
+        for (Node node : ((HBox) selectedBtn.getParent()).getChildren()) {
+            if (node instanceof Button colorBtn) {
+                String style = colorBtn.getStyle();
+                if (colorBtn == selectedBtn) {
+                    // 选中的按钮加粗边框
+                    style = style.replace("border-width: 1", "border-width: 2");
+                    style = style.replace("rgba(255,255,255,0.3)", "white");
+                } else {
+                    // 其他按钮恢复默认边框
+                    style = style.replace("border-width: 2", "border-width: 1");
+                    style = style.replace("white", "rgba(255,255,255,0.3)");
+                }
+                colorBtn.setStyle(style);
+            }
+        }
+    }
+
+    private String toRGBA(Color color) {
+        return String.format("rgba(%d, %d, %d, %.1f)",
+                (int) (color.getRed() * 255),
+                (int) (color.getGreen() * 255),
+                (int) (color.getBlue() * 255),
+                color.getOpacity());
     }
 
     private void updateSubToolbarPosition() {
@@ -317,6 +404,7 @@ public class FloatingToolbar {
         switch (currentMode) {
             case PEN -> drawCanvas.setupPenTool();
             case RECTANGLE -> drawCanvas.setupRectTool();
+            case LINE -> drawCanvas.setupLineTool();
             case NONE -> drawMode(false);
         }
     }
