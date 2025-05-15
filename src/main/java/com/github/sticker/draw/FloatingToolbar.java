@@ -11,7 +11,6 @@ import javafx.scene.*;
 import javafx.scene.Cursor;
 import javafx.scene.control.*;
 import javafx.scene.control.Button;
-import javafx.scene.control.Label;
 import javafx.scene.effect.DropShadow;
 import javafx.scene.image.PixelReader;
 import javafx.scene.image.PixelWriter;
@@ -130,9 +129,20 @@ public class FloatingToolbar {
         btn.setOnAction(e -> {
             FileChooser fileChooser = new FileChooser();
             fileChooser.setTitle("Save Screenshot");
+
+            String defaultFileName = String.format("SnapSticker_%1$tY%1$tm%1$td_%1$tH%1$tM%1$tS.png",
+                    System.currentTimeMillis());
+
+            fileChooser.setInitialFileName(defaultFileName);
             fileChooser.getExtensionFilters().add(
                     new FileChooser.ExtensionFilter("PNG Image", "*.png")
             );
+            String userHome = System.getProperty("user.home");
+            File picturesDir = new File(userHome, "Pictures");
+            if (picturesDir.exists()) {
+                fileChooser.setInitialDirectory(picturesDir);
+            }
+
             File file = fileChooser.showSaveDialog(toolbar.getScene().getWindow());
             if (file != null) {
                 try {
@@ -225,10 +235,6 @@ public class FloatingToolbar {
         return toolbar;
     }
 
-    public DrawCanvas getDrawCanvas() {
-        return drawCanvas;
-    }
-
     public void drawMode(boolean drawMode) {
         parentContainer.getChildren().forEach(it -> it.setMouseTransparent(drawMode));
         drawCanvas.setMouseTransparent(!drawMode);
@@ -255,34 +261,29 @@ public class FloatingToolbar {
         subToolbar.setSpacing(16);
         subToolbar.setAlignment(Pos.CENTER);
 
-        // 基础样式
         subToolbar.setStyle("""
-            -fx-background-color: rgba(45, 45, 45, 0.95);
-            -fx-background-radius: 8;
-            -fx-padding: 8 16;
-            -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 10, 0, 0, 2);
-            """);
+                -fx-background-color: rgba(45, 45, 45, 0.95);
+                -fx-background-radius: 8;
+                -fx-padding: 8 16;
+                -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 10, 0, 0, 2);
+                """);
 
         subToolbar.setVisible(false);
         subToolbar.setManaged(false);
 
-        // 大小滑块美化
         sizeSlider.setStyle("""
-            -fx-pref-width: 100;
-            """);
+                -fx-pref-width: 100;
+                """);
         sizeSlider.setShowTickLabels(false);
         sizeSlider.setShowTickMarks(false);
         sizeSlider.valueProperty().addListener((obs, old, newSize) ->
                 drawCanvas.setStrokeWidth(newSize.doubleValue())
         );
 
-        // 创建颜色快速选择按钮组
         HBox colorButtons = createColorButtons();
 
-        // 创建分隔符
         Separator separator = createStyledSeparator();
 
-        // 布局组装
         subToolbar.getChildren().addAll(
                 sizeSlider,
                 separator,
@@ -296,7 +297,6 @@ public class FloatingToolbar {
         HBox colorBox = new HBox(4);
         colorBox.setAlignment(Pos.CENTER);
 
-        // 预定义颜色数组
         Color[] colors = {
                 Color.WHITE,
                 Color.RED,
@@ -308,7 +308,6 @@ public class FloatingToolbar {
                 Color.BLACK
         };
 
-        // 创建颜色按钮
         for (Color color : colors) {
             Button colorBtn = createColorButton(color);
             colorBox.getChildren().add(colorBtn);
@@ -323,26 +322,22 @@ public class FloatingToolbar {
         btn.setPrefSize(20, 20);
         btn.setMaxSize(20, 20);
 
-        // 按钮样式
         btn.setStyle(String.format("""
-            -fx-background-color: %s;
-            -fx-background-radius: 4;
-            -fx-border-color: rgba(255,255,255,0.3);
-            -fx-border-radius: 4;
-            -fx-border-width: 1;
-            """, toRGBA(color)));
+                -fx-background-color: %s;
+                -fx-background-radius: 4;
+                -fx-border-color: rgba(255,255,255,0.3);
+                -fx-border-radius: 4;
+                -fx-border-width: 1;
+                """, toRGBA(color)));
 
-        // 点击事件
         btn.setOnAction(e -> {
             drawCanvas.setStrokeColor(color);
             ImageCursor ic = new ImageCursor(getDrawCursor(color), 15, 15);
             drawCanvas.setCursor(ic);
 
-            // 更新所有颜色按钮的边框
             updateColorButtonsBorder(btn);
         });
 
-        // 鼠标悬停效果
         btn.setOnMouseEntered(e ->
                 btn.setStyle(btn.getStyle() + "-fx-effect: dropshadow(gaussian, rgba(255,255,255,0.3), 5, 0, 0, 0);")
         );
@@ -355,16 +350,13 @@ public class FloatingToolbar {
     }
 
     private void updateColorButtonsBorder(Button selectedBtn) {
-        // 更新所有颜色按钮的边框
         for (Node node : ((HBox) selectedBtn.getParent()).getChildren()) {
             if (node instanceof Button colorBtn) {
                 String style = colorBtn.getStyle();
                 if (colorBtn == selectedBtn) {
-                    // 选中的按钮加粗边框
                     style = style.replace("border-width: 1", "border-width: 2");
                     style = style.replace("rgba(255,255,255,0.3)", "white");
                 } else {
-                    // 其他按钮恢复默认边框
                     style = style.replace("border-width: 2", "border-width: 1");
                     style = style.replace("white", "rgba(255,255,255,0.3)");
                 }
