@@ -3,8 +3,8 @@ package com.github.sticker.draw;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.geometry.Point2D;
+import javafx.scene.Cursor;
 import javafx.scene.Node;
-import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.*;
@@ -12,6 +12,9 @@ import javafx.scene.shape.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Stack;
+
+import static com.github.sticker.draw.Icon.createDirectionalCursor;
+import static com.github.sticker.draw.Icon.point;
 
 public class DrawCanvas extends Pane {
     private Path currentPath;
@@ -30,8 +33,13 @@ public class DrawCanvas extends Pane {
     private final BooleanProperty undoStackEmpty = new SimpleBooleanProperty(true);
     private final BooleanProperty redoStackEmpty = new SimpleBooleanProperty(true);
 
-    public BooleanProperty undoStackEmptyProperty() { return undoStackEmpty; }
-    public BooleanProperty redoStackEmptyProperty() { return redoStackEmpty; }
+    public BooleanProperty undoStackEmptyProperty() {
+        return undoStackEmpty;
+    }
+
+    public BooleanProperty redoStackEmptyProperty() {
+        return redoStackEmpty;
+    }
 
 
     public Color getStrokeColor() {
@@ -104,6 +112,7 @@ public class DrawCanvas extends Pane {
         });
 
         this.setOnMouseDragged(e -> {
+            this.setCursor(Cursor.NONE);
             Point2D currentPoint = new Point2D(e.getX(), e.getY());
             if (currentPoint.distance(lastSampledPoint) >= SAMPLE_DISTANCE) {
                 points.add(currentPoint);
@@ -138,6 +147,7 @@ public class DrawCanvas extends Pane {
             }
             saveState(currentPath);
             currentPath = null;
+            this.setCursor(createDirectionalCursor(point));
         });
     }
 
@@ -145,14 +155,14 @@ public class DrawCanvas extends Pane {
         final double[] startX = new double[1];
         final double[] startY = new double[1];
         final Line[] previewLine = new Line[1];
-    
+
         this.setOnMousePressed(e -> {
             startX[0] = e.getX();
             startY[0] = e.getY();
 
             previewLine[0] = new Line(
-                startX[0], startY[0],
-                startX[0], startY[0]
+                    startX[0], startY[0],
+                    startX[0], startY[0]
             );
 
             previewLine[0].setStroke(getStrokeColor());
@@ -163,19 +173,20 @@ public class DrawCanvas extends Pane {
 
             getChildren().add(previewLine[0]);
         });
-    
+
         this.setOnMouseDragged(e -> {
+            this.setCursor(Cursor.NONE);
             if (previewLine[0] != null) {
                 previewLine[0].setEndX(e.getX());
                 previewLine[0].setEndY(e.getY());
             }
         });
-    
+
         this.setOnMouseReleased(e -> {
             if (previewLine[0] != null) {
                 Line finalLine = new Line(
-                    startX[0], startY[0],
-                    e.getX(), e.getY()
+                        startX[0], startY[0],
+                        e.getX(), e.getY()
                 );
 
                 finalLine.setStroke(getStrokeColor());
@@ -189,6 +200,7 @@ public class DrawCanvas extends Pane {
                 saveState(finalLine);
                 previewLine[0] = null;
             }
+            this.setCursor(createDirectionalCursor(point));
         });
     }
 
@@ -213,6 +225,7 @@ public class DrawCanvas extends Pane {
         });
 
         this.setOnMouseDragged(e -> {
+            this.setCursor(Cursor.NONE);
             if (currentRectangle != null) {
                 double currentX = e.getX();
                 double currentY = e.getY();
@@ -233,6 +246,7 @@ public class DrawCanvas extends Pane {
             if (currentRectangle != null) {
                 saveState(currentRectangle);
             }
+            this.setCursor(createDirectionalCursor(point));
         });
     }
 

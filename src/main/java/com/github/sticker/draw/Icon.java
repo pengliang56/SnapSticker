@@ -1,5 +1,12 @@
 package com.github.sticker.draw;
 
+import javafx.scene.Group;
+import javafx.scene.ImageCursor;
+import javafx.scene.SnapshotParameters;
+import javafx.scene.image.Image;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.SVGPath;
+
 public interface Icon {
     String undo = "M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3";
     String redo = "m15 15 6-6m0 0-6-6m6 6H9a6 6 0 0 0 0 12h3";
@@ -22,4 +29,25 @@ public interface Icon {
     String arrowLeft = "M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18";
     String arrowRight = "M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3";
     String arrowsPointingOut = "M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15";
+
+    static ImageCursor createDirectionalCursor(String svgPath) {
+        SVGPath outer = new SVGPath();
+        outer.setContent(svgPath);
+        outer.setStroke(Color.WHITE);
+        outer.setStrokeWidth(3);
+        outer.setFill(Color.BLACK);
+
+        SVGPath inner = new SVGPath();
+        inner.setContent(svgPath);
+        inner.setStroke(Color.BLACK);
+        inner.setStrokeWidth(1);
+        inner.setFill(Color.BLACK);
+
+        Group group = new Group(outer, inner);
+        SnapshotParameters params = new SnapshotParameters();
+        params.setFill(Color.TRANSPARENT);
+
+        Image cursorImage = group.snapshot(params, null);
+        return new ImageCursor(cursorImage, cursorImage.getWidth() / 2, cursorImage.getHeight() / 2);
+    }
 }

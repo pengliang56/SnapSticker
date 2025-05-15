@@ -35,6 +35,9 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Objects;
 
+import static com.github.sticker.draw.Icon.createDirectionalCursor;
+import static com.github.sticker.draw.Icon.point;
+
 public class FloatingToolbar {
     private DrawMode currentMode = DrawMode.NONE;
 
@@ -252,7 +255,7 @@ public class FloatingToolbar {
             colorPicker.setValue(drawCanvas.getStrokeColor());
             sizeSlider.setValue(drawCanvas.getStrokeWidth());
             activeButton.getStyleClass().add("active");
-            drawCanvas.setCursor(new ImageCursor(getDrawCursor(Color.RED), 15, 15));
+            drawCanvas.setCursor(createDirectionalCursor(point));
         }
     }
 

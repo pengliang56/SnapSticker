@@ -27,6 +27,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
 
+import static com.github.sticker.draw.Icon.createDirectionalCursor;
 import static javafx.scene.Cursor.DEFAULT;
 
 /**
@@ -966,21 +967,6 @@ public class ScreenshotSelector {
         return createDirectionalCursor(Icon.point);
     }
 
-    private static ImageCursor createDirectionalCursor(String svgPath) {
-        SVGPath path = new SVGPath();
-        path.setContent(svgPath);
-        path.setStroke(Color.WHITE);
-        path.setStrokeWidth(2);
-        path.setFill(Color.BLACK);
-
-        SnapshotParameters params = new SnapshotParameters();
-        params.setFill(Color.TRANSPARENT);
-
-        Group group = new Group(path);
-        Image cursorImage = group.snapshot(params, null);
-
-        return new ImageCursor(cursorImage, cursorImage.getWidth() / 2, cursorImage.getHeight() / 2);
-    }
 
     private static final ImageCursor CURSOR_N = createDirectionalCursor(Icon.arrowUp);
     private static final ImageCursor CURSOR_S = createDirectionalCursor(Icon.arrowDown);
