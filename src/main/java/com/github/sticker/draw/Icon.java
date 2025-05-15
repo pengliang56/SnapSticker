@@ -12,4 +12,14 @@ public interface Icon {
     String line = "M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941";
 
     String point = "M12 4.5v15m7.5-7.5h-15";
+    String arrowDownLeft = "m19.5 4.5-15 15m0 0h11.25m-11.25 0V8.25";
+    String arrowDownRight = "m4.5 4.5 15 15m0 0V8.25m0 11.25H8.25";
+    String arrowDown = "M19.5 13.5 12 21m0 0-7.5-7.5M12 21V3";
+
+    String arrowUp = "M4.5 10.5 12 3m0 0 7.5 7.5M12 3v18";
+    String arrowUpRight = "m4.5 19.5 15-15m0 0H8.25m11.25 0v11.25";
+    String arrowUpLeft = "m19.5 19.5-15-15m0 0v11.25m0-11.25h11.25";
+    String arrowLeft = "M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18";
+    String arrowRight = "M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3";
+    String arrowsPointingOut = "M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15";
 }

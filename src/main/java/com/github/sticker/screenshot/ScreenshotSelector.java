@@ -2,16 +2,18 @@ package com.github.sticker.screenshot;
 
 import com.github.sticker.draw.DrawCanvas;
 import com.github.sticker.draw.FloatingToolbar;
+import com.github.sticker.draw.Icon;
 import com.github.sticker.util.ScreenManager;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.beans.value.ChangeListener;
 import javafx.geometry.Rectangle2D;
-import javafx.scene.CacheHint;
-import javafx.scene.Scene;
+import javafx.scene.*;
+import javafx.scene.image.Image;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
+import javafx.scene.shape.SVGPath;
 import javafx.scene.shape.Shape;
 import javafx.scene.shape.StrokeType;
 import javafx.stage.Screen;
@@ -23,7 +25,6 @@ import java.awt.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 import java.util.function.Consumer;
 
 import static javafx.scene.Cursor.DEFAULT;
@@ -51,6 +52,9 @@ public class ScreenshotSelector {
     // Mouse tracking
     private Timeline mouseTracker;
     private static final Duration TRACK_INTERVAL = Duration.millis(16); // ~60fps
+
+    // Custom cursor
+    private static final ImageCursor customCursor = createCustomCursor();
 
     // Screen and taskbar bounds
     private Rectangle2D currentScreenBounds;
@@ -101,6 +105,7 @@ public class ScreenshotSelector {
 
         // Create and configure the stage
         Scene scene = initSceneAndSelectorStage();
+        scene.setCursor(customCursor);
 
         // Initialize mask layers
         initializeMaskLayers();
@@ -424,7 +429,6 @@ public class ScreenshotSelector {
         scene.setOnMousePressed(event -> {
             if (isSelecting) {
                 fullscreenMask.setFill(Color.color(0, 0, 0, MASK_OPACITY));
-                scene.setCursor(javafx.scene.Cursor.CROSSHAIR);
                 startX = event.getScreenX();
                 startY = event.getScreenY();
             }
@@ -591,14 +595,14 @@ public class ScreenshotSelector {
         root.getChildren().addAll(dragAreas);
 
         // 设置检测区域事件
-        setupAreaEvents(topArea, "n", javafx.scene.Cursor.V_RESIZE, dragDelta);
-        setupAreaEvents(bottomArea, "s", javafx.scene.Cursor.V_RESIZE, dragDelta);
-        setupAreaEvents(leftArea, "w", javafx.scene.Cursor.H_RESIZE, dragDelta);
-        setupAreaEvents(rightArea, "e", javafx.scene.Cursor.H_RESIZE, dragDelta);
-        setupAreaEvents(topLeftArea, "nw", javafx.scene.Cursor.NW_RESIZE, dragDelta);
-        setupAreaEvents(topRightArea, "ne", javafx.scene.Cursor.NE_RESIZE, dragDelta);
-        setupAreaEvents(bottomLeftArea, "sw", javafx.scene.Cursor.SW_RESIZE, dragDelta);
-        setupAreaEvents(bottomRightArea, "se", javafx.scene.Cursor.SE_RESIZE, dragDelta);
+        setupAreaEvents(topArea, "n", CURSOR_N, dragDelta);
+        setupAreaEvents(bottomArea, "s", CURSOR_S, dragDelta);
+        setupAreaEvents(leftArea, "w", CURSOR_W, dragDelta);
+        setupAreaEvents(rightArea, "e", CURSOR_E, dragDelta);
+        setupAreaEvents(topLeftArea, "nw", CURSOR_NW, dragDelta);
+        setupAreaEvents(topRightArea, "ne", CURSOR_NE, dragDelta);
+        setupAreaEvents(bottomLeftArea, "sw", CURSOR_SW, dragDelta);
+        setupAreaEvents(bottomRightArea, "se", CURSOR_SE, dragDelta);
 
         // 更新检测区域位置
         selectionBorder.xProperty().addListener(positionListener);
@@ -613,7 +617,7 @@ public class ScreenshotSelector {
             if (!isResizing) {
                 dragDelta[0] = e.getSceneX() - selectionBorder.getX();
                 dragDelta[1] = e.getSceneY() - selectionBorder.getY();
-                selectionBorder.getScene().setCursor(MOVE);
+                selectionBorder.getScene().setCursor(CURSOR_MOVE);
             }
             e.consume();
         });
@@ -635,7 +639,7 @@ public class ScreenshotSelector {
         // 设置选择区域的鼠标进入/退出事件
         selectionBorder.setOnMouseEntered(e -> {
             if (!isResizing) {
-                selectionBorder.getScene().setCursor(MOVE);
+                selectionBorder.getScene().setCursor(CURSOR_MOVE);
             }
         });
 
@@ -649,7 +653,7 @@ public class ScreenshotSelector {
     private void setupAreaEvents(Rectangle area, String direction, javafx.scene.Cursor cursor, double[] dragDelta) {
         area.setOnMouseEntered(e -> {
             if (!isResizing) {
-                area.getScene().setCursor(cursor);
+                area.getScene().setCursor(getResizeCursor(direction));
             }
         });
 
@@ -901,21 +905,21 @@ public class ScreenshotSelector {
     private javafx.scene.Cursor getResizeCursor(String direction) {
         switch (direction) {
             case "n":
-                return javafx.scene.Cursor.V_RESIZE;
+                return CURSOR_N;
             case "s":
-                return javafx.scene.Cursor.V_RESIZE;
+                return CURSOR_S;
             case "e":
-                return javafx.scene.Cursor.H_RESIZE;
+                return CURSOR_E;
             case "w":
-                return javafx.scene.Cursor.H_RESIZE;
+                return CURSOR_W;
             case "ne":
-                return javafx.scene.Cursor.NE_RESIZE;
+                return CURSOR_NE;
             case "nw":
-                return javafx.scene.Cursor.NW_RESIZE;
+                return CURSOR_NW;
             case "se":
-                return javafx.scene.Cursor.SE_RESIZE;
+                return CURSOR_SE;
             case "sw":
-                return javafx.scene.Cursor.SW_RESIZE;
+                return CURSOR_SW;
             default:
                 return DEFAULT;
         }
@@ -991,4 +995,34 @@ public class ScreenshotSelector {
     public Rectangle getSelectionArea() {
         return selectionBorder;
     }
+
+    private static ImageCursor createCustomCursor() {
+        return createDirectionalCursor(Icon.point);
+    }
+
+    private static ImageCursor createDirectionalCursor(String svgPath) {
+        SVGPath path = new SVGPath();
+        path.setContent(svgPath);
+        path.setStroke(Color.WHITE);
+        path.setStrokeWidth(2);
+        path.setFill(Color.BLACK);
+
+        SnapshotParameters params = new SnapshotParameters();
+        params.setFill(Color.TRANSPARENT);
+        
+        Group group = new Group(path);
+        Image cursorImage = group.snapshot(params, null);
+        
+        return new ImageCursor(cursorImage, cursorImage.getWidth()/2, cursorImage.getHeight()/2);
+    }
+
+    private static final ImageCursor CURSOR_N = createDirectionalCursor(Icon.arrowUp);
+    private static final ImageCursor CURSOR_S = createDirectionalCursor(Icon.arrowDown);
+    private static final ImageCursor CURSOR_E = createDirectionalCursor(Icon.arrowRight);
+    private static final ImageCursor CURSOR_W = createDirectionalCursor(Icon.arrowLeft);
+    private static final ImageCursor CURSOR_NE = createDirectionalCursor(Icon.arrowUpRight);
+    private static final ImageCursor CURSOR_NW = createDirectionalCursor(Icon.arrowUpLeft);
+    private static final ImageCursor CURSOR_SE = createDirectionalCursor(Icon.arrowDownRight);
+    private static final ImageCursor CURSOR_SW = createDirectionalCursor(Icon.arrowDownLeft);
+    private static final ImageCursor CURSOR_MOVE = createDirectionalCursor(Icon.arrowsPointingOut);
 } 
