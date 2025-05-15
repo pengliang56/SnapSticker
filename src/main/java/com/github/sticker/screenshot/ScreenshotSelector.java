@@ -360,8 +360,8 @@ public class ScreenshotSelector {
     private Rectangle createSelectionBorder() {
         Rectangle border = new Rectangle();
         border.setFill(Color.rgb(0, 0, 0, 0.01));
-        border.setStroke(Color.rgb(0, 120, 215));
-        border.setStrokeWidth(2);
+        border.setStroke(Color.rgb(20, 20, 200, MASK_OPACITY));
+        border.setStrokeWidth(3);
         border.setStrokeType(StrokeType.OUTSIDE);
         return border;
     }

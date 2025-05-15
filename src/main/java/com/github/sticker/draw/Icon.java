@@ -31,19 +31,12 @@ public interface Icon {
     String arrowsPointingOut = "M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15";
 
     static ImageCursor createDirectionalCursor(String svgPath) {
-        SVGPath outer = new SVGPath();
-        outer.setContent(svgPath);
-        outer.setStroke(Color.WHITE);
-        outer.setStrokeWidth(3);
-        outer.setFill(Color.BLACK);
+        SVGPath icon = new SVGPath();
+        icon.setContent(svgPath);
+        icon.setStroke(Color.rgb(13, 120, 171));
+        icon.setStrokeWidth(2);
 
-        SVGPath inner = new SVGPath();
-        inner.setContent(svgPath);
-        inner.setStroke(Color.BLACK);
-        inner.setStrokeWidth(1);
-        inner.setFill(Color.BLACK);
-
-        Group group = new Group(outer, inner);
+        Group group = new Group(icon);
         SnapshotParameters params = new SnapshotParameters();
         params.setFill(Color.TRANSPARENT);
 
