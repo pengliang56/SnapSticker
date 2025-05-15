@@ -101,9 +101,6 @@ public class ScreenshotSelector {
 
         // Create and configure the stage
         Scene scene = initSceneAndSelectorStage();
-        scene.getStylesheets().add(
-                Objects.requireNonNull(getClass().getResource("/styles/toolbar.css")).toExternalForm()
-        );
 
         // Initialize mask layers
         initializeMaskLayers();
