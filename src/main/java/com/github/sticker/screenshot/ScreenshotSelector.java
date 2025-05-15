@@ -28,7 +28,6 @@ import java.util.List;
 import java.util.function.Consumer;
 
 import static javafx.scene.Cursor.DEFAULT;
-import static javafx.scene.Cursor.MOVE;
 
 /**
  * Handles the screenshot area selection functionality.
@@ -428,7 +427,7 @@ public class ScreenshotSelector {
     private void setupMouseHandlers(Scene scene) {
         scene.setOnMousePressed(event -> {
             if (isSelecting) {
-                stopMouseTracking(); // 在拖动时停止鼠标跟踪
+                stopMouseTracking();
                 fullscreenMask.setFill(Color.color(0, 0, 0, MASK_OPACITY));
                 startX = event.getScreenX();
                 startY = event.getScreenY();
@@ -614,56 +613,29 @@ public class ScreenshotSelector {
 
         // 设置选择区域的鼠标进入/退出事件
         selectionBorder.setOnMouseMoved(e -> {
-            if (!isResizing) {
-                selectionBorder.getScene().setCursor(CURSOR_MOVE);
-            }
-        });
-
-        selectionBorder.setOnMouseEntered(e -> {
-            if (!isResizing) {
-                selectionBorder.getScene().setCursor(CURSOR_MOVE);
-            }
-        });
-
-        selectionBorder.setOnMouseExited(e -> {
-            if (!isResizing) {
-                selectionBorder.getScene().setCursor(customCursor);
-            }
+            selectionBorder.getScene().setCursor(CURSOR_MOVE);
         });
 
         selectionBorder.setOnMousePressed(e -> {
-            if (!isResizing) {
-                dragDelta[0] = e.getSceneX() - selectionBorder.getX();
-                dragDelta[1] = e.getSceneY() - selectionBorder.getY();
-            }
+            dragDelta[0] = e.getSceneX() - selectionBorder.getX();
+            dragDelta[1] = e.getSceneY() - selectionBorder.getY();
             e.consume();
         });
 
         selectionBorder.setOnMouseDragged(e -> {
-            if (!isResizing) {
-                handleDrag(e, dragDelta);
-            }
+            handleDrag(e, dragDelta);
             e.consume();
         });
 
         selectionBorder.setOnMouseReleased(e -> {
             isResizing = false;
             resizeDirection = "";
-            e.consume();
         });
     }
 
     private void setupAreaEvents(Rectangle area, String direction, javafx.scene.Cursor cursor, double[] dragDelta) {
-        area.setOnMouseEntered(e -> {
-            if (!isResizing) {
-                area.getScene().setCursor(getResizeCursor(direction));
-            }
-        });
-
-        area.setOnMouseExited(e -> {
-            if (!isResizing) {
-                area.getScene().setCursor(DEFAULT);
-            }
+        area.setOnMouseMoved(e -> {
+            area.getScene().setCursor(cursor);
         });
 
         area.setOnMousePressed(e -> {
@@ -906,26 +878,17 @@ public class ScreenshotSelector {
     }
 
     private javafx.scene.Cursor getResizeCursor(String direction) {
-        switch (direction) {
-            case "n":
-                return CURSOR_N;
-            case "s":
-                return CURSOR_S;
-            case "e":
-                return CURSOR_E;
-            case "w":
-                return CURSOR_W;
-            case "ne":
-                return CURSOR_NE;
-            case "nw":
-                return CURSOR_NW;
-            case "se":
-                return CURSOR_SE;
-            case "sw":
-                return CURSOR_SW;
-            default:
-                return DEFAULT;
-        }
+        return switch (direction) {
+            case "n" -> CURSOR_N;
+            case "s" -> CURSOR_S;
+            case "e" -> CURSOR_E;
+            case "w" -> CURSOR_W;
+            case "ne" -> CURSOR_NE;
+            case "nw" -> CURSOR_NW;
+            case "se" -> CURSOR_SE;
+            case "sw" -> CURSOR_SW;
+            default -> DEFAULT;
+        };
     }
 
     private void handleDrag(javafx.scene.input.MouseEvent e, double[] dragDelta) {
@@ -1012,11 +975,11 @@ public class ScreenshotSelector {
 
         SnapshotParameters params = new SnapshotParameters();
         params.setFill(Color.TRANSPARENT);
-        
+
         Group group = new Group(path);
         Image cursorImage = group.snapshot(params, null);
-        
-        return new ImageCursor(cursorImage, cursorImage.getWidth()/2, cursorImage.getHeight()/2);
+
+        return new ImageCursor(cursorImage, cursorImage.getWidth() / 2, cursorImage.getHeight() / 2);
     }
 
     private static final ImageCursor CURSOR_N = createDirectionalCursor(Icon.arrowUp);
