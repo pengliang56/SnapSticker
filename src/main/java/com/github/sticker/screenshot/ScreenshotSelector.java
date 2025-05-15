@@ -428,6 +428,7 @@ public class ScreenshotSelector {
     private void setupMouseHandlers(Scene scene) {
         scene.setOnMousePressed(event -> {
             if (isSelecting) {
+                stopMouseTracking(); // 在拖动时停止鼠标跟踪
                 fullscreenMask.setFill(Color.color(0, 0, 0, MASK_OPACITY));
                 startX = event.getScreenX();
                 startY = event.getScreenY();
@@ -436,7 +437,6 @@ public class ScreenshotSelector {
 
         scene.setOnMouseDragged(event -> {
             if (isSelecting) {
-                stopMouseTracking();
                 root.setClip(null);
                 updateFullscreen(0, 0, currentScreenBounds.getWidth(), currentScreenBounds.getHeight());
                 root.getChildren().set(1, fullscreenMask);
@@ -455,7 +455,6 @@ public class ScreenshotSelector {
     }
 
     private void handleMouseReleased(javafx.scene.input.MouseEvent event, Scene scene) {
-        stopMouseTracking();
         scene.setCursor(DEFAULT);
         endX = event.getScreenX();
         endY = event.getScreenY();
@@ -613,11 +612,29 @@ public class ScreenshotSelector {
         // 初始更新检测区域位置
         updateAreas.accept(selectionBorder);
 
+        // 设置选择区域的鼠标进入/退出事件
+        selectionBorder.setOnMouseMoved(e -> {
+            if (!isResizing) {
+                selectionBorder.getScene().setCursor(CURSOR_MOVE);
+            }
+        });
+
+        selectionBorder.setOnMouseEntered(e -> {
+            if (!isResizing) {
+                selectionBorder.getScene().setCursor(CURSOR_MOVE);
+            }
+        });
+
+        selectionBorder.setOnMouseExited(e -> {
+            if (!isResizing) {
+                selectionBorder.getScene().setCursor(customCursor);
+            }
+        });
+
         selectionBorder.setOnMousePressed(e -> {
             if (!isResizing) {
                 dragDelta[0] = e.getSceneX() - selectionBorder.getX();
                 dragDelta[1] = e.getSceneY() - selectionBorder.getY();
-                selectionBorder.getScene().setCursor(CURSOR_MOVE);
             }
             e.consume();
         });
@@ -632,21 +649,7 @@ public class ScreenshotSelector {
         selectionBorder.setOnMouseReleased(e -> {
             isResizing = false;
             resizeDirection = "";
-            selectionBorder.getScene().setCursor(DEFAULT);
             e.consume();
-        });
-
-        // 设置选择区域的鼠标进入/退出事件
-        selectionBorder.setOnMouseEntered(e -> {
-            if (!isResizing) {
-                selectionBorder.getScene().setCursor(CURSOR_MOVE);
-            }
-        });
-
-        selectionBorder.setOnMouseExited(e -> {
-            if (!isResizing) {
-                selectionBorder.getScene().setCursor(DEFAULT);
-            }
         });
     }
 

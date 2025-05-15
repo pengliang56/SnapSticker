@@ -547,12 +547,8 @@ public class FloatingToolbar {
     }
 
     private WritableImage getDrawCursor(Paint color) {
-        String verticalCrosshair = "M15 0 L15 30 " +    // 主垂直线
-                "M0 15 L30 15 " +    // 主水平线（保持基本十字结构）
-                "M15 14 L15 16";     // 中心强化点（更细的垂直线段）
-
         SVGPath svg = new SVGPath();
-        svg.setContent(verticalCrosshair);
+        svg.setContent(Icon.point);
         svg.setStroke(color);
         svg.setStrokeWidth(1.5);
 
