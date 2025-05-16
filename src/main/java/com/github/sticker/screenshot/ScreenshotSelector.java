@@ -8,13 +8,12 @@ import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.beans.value.ChangeListener;
 import javafx.geometry.Rectangle2D;
-import javafx.scene.*;
-import javafx.scene.image.Image;
+import javafx.scene.CacheHint;
+import javafx.scene.ImageCursor;
+import javafx.scene.Scene;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
-import javafx.scene.shape.SVGPath;
-import javafx.scene.shape.Shape;
 import javafx.scene.shape.StrokeType;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
@@ -43,9 +42,10 @@ public class ScreenshotSelector {
     private boolean isSelecting = false;
 
     // Mask layers
-    private Rectangle fullscreenMask;        // Base semi-transparent mask
+//    private Rectangle fullscreenMask;        // Base semi-transparent mask
+    private Rectangle maskTop, maskBottom, maskLeft, maskRight;
     private Rectangle selectionArea;   // Selection area mask
-    private Rectangle selectionBorder; // Visual border for selection area
+    //    private Rectangle selectionBorder; // Visual border for selection area
     private DrawCanvas drawCanvasArea; // Visual border for selection area
     private static final double MASK_OPACITY = 0.5;
 
@@ -105,8 +105,7 @@ public class ScreenshotSelector {
 
         // Create and configure the stage
         Scene scene = initSceneAndSelectorStage();
-        scene.setCursor(customCursor);
-
+        // traverseAndDebugBorders(scene.getRoot());
         // Initialize mask layers
         initializeMaskLayers();
 
@@ -125,13 +124,10 @@ public class ScreenshotSelector {
     }
 
     private Scene initSceneAndSelectorStage() {
+        Scene scene = initScene();
         selectorStage = new Stage();
         selectorStage.initStyle(StageStyle.TRANSPARENT);
         selectorStage.setAlwaysOnTop(true);
-
-        // Create the scene with screen dimensions
-        Scene scene = new Scene(root, currentScreenBounds.getWidth(), currentScreenBounds.getHeight());
-        scene.setFill(Color.TRANSPARENT);
 
         // Position the stage on the screen
         selectorStage.setX(currentScreenBounds.getMinX());
@@ -143,21 +139,17 @@ public class ScreenshotSelector {
         return scene;
     }
 
-    /**
-     * Initialize mouse tracking functionality
-     */
-    private void initializeMouseTracking() {
-        mouseTracker = new Timeline(
-                new KeyFrame(TRACK_INTERVAL, event -> updateMaskBasedOnMousePosition())
-        );
-        mouseTracker.setCycleCount(Timeline.INDEFINITE);
-        mouseTracker.play();
+    private Scene initScene() {
+        Scene scene = new Scene(root, currentScreenBounds.getWidth(), currentScreenBounds.getHeight());
+        scene.setFill(Color.rgb(0, 0, 0, 0.01));
+        scene.setCursor(customCursor);
+        return scene;
     }
 
     /**
      * Update the mask based on current mouse position
      */
-    private void updateMaskBasedOnMousePosition() {
+/*    private void updateMaskBasedOnMousePosition() {
         Point mousePosition = MouseInfo.getPointerInfo().getLocation();
         double mouseX = mousePosition.getX();
         double mouseY = mousePosition.getY();
@@ -170,23 +162,43 @@ public class ScreenshotSelector {
             startSelection();
             return;
         }
-
-        // Check if mouse is over taskbar
-        boolean isOverTaskbar = isTaskbarVisible && taskbarBounds != null &&
-                taskbarBounds.contains(mouseX, mouseY);
-
+        System.out.println("updateMaskBasedOnMousePosition mouseX: " + mouseX);
         // Update mask based on mouse position
-        if (isOverTaskbar) {
-            updateTaskbarMask();
-        } else {
-            updateScreenMask(false);
-        }
-    }
-
+        updateScreenMask();
+    }*/
     public void stopMouseTracking() {
         if (mouseTracker != null) {
             mouseTracker.stop();
             mouseTracker = null;
+        }
+    }
+
+    private void initializeMouseTracking() {
+        mouseTracker = new Timeline(
+                new KeyFrame(TRACK_INTERVAL, event -> updateScreenMask())
+        );
+        mouseTracker.setCycleCount(Timeline.INDEFINITE);
+        mouseTracker.play();
+    }
+
+    private void updateScreenMask() {
+        Point mousePosition = MouseInfo.getPointerInfo().getLocation();
+        double mouseX = mousePosition.getX();
+        double mouseY = mousePosition.getY();
+
+        boolean isOverTaskbar = isTaskbarVisible && taskbarBounds != null &&
+                taskbarBounds.contains(mouseX, mouseY);
+
+        // If taskbar is visible, create a cut-out for it
+        if (isOverTaskbar & isTaskbarVisible && taskbarBounds != null) {
+            updateDrawCanvasMask(drawCanvasArea,
+                    taskbarBounds.getMinX() - currentScreenBounds.getMinX(),
+                    taskbarBounds.getMinY() - currentScreenBounds.getMinY(),
+                    taskbarBounds.getWidth(), taskbarBounds.getHeight());
+        } else {
+            // If no taskbar, just use the base mask
+            updateDrawCanvasMask(drawCanvasArea, 0, 0, currentScreenBounds.getWidth(),
+                    currentScreenBounds.getHeight() - taskbarBounds.getHeight());
         }
     }
 
@@ -203,12 +215,14 @@ public class ScreenshotSelector {
             root.getChildren().clear();
             root = null;
         }
-        fullscreenMask = null;
         selectionArea = null;
-        selectionBorder = null;
         drawCanvasArea = null;
         isSelecting = false;
         isResizing = false;
+        maskTop = null;
+        maskBottom = null;
+        maskLeft = null;
+        maskRight = null;
         resizeDirection = "";
     }
 
@@ -216,133 +230,87 @@ public class ScreenshotSelector {
      * Initialize all mask layers for the screenshot selection
      */
     private void initializeMaskLayers() {
-        // Create and add all mask layers
-        fullscreenMask = createBaseMask();
         selectionArea = createSelectionMask();
-        selectionBorder = createSelectionBorder();
+        createSelectCalculatedMask();
         createDrawCanvsaArea();
-        root.getChildren().addAll(drawCanvasArea, fullscreenMask, selectionArea, selectionBorder);
 
-        // Initial mask update based on mouse position
-        updateMaskBasedOnMousePosition();
+        root.getChildren().addAll(
+                drawCanvasArea,
+                maskTop, maskBottom, maskLeft, maskRight,
+                selectionArea);
     }
+
+    private void createSelectCalculatedMask() {
+        maskTop = new Rectangle();
+        maskBottom = new Rectangle();
+        maskLeft = new Rectangle();
+        maskRight = new Rectangle();
+        initStyle(maskTop);
+        initStyle(maskBottom);
+        initStyle(maskLeft);
+        initStyle(maskRight);
+    }
+
+    private void initStyle(Rectangle mask) {
+        mask.setFill(Color.color(0, 0, 0, MASK_OPACITY));
+        mask.setMouseTransparent(true);
+    }
+
 
     private void createDrawCanvsaArea() {
         drawCanvasArea = new DrawCanvas();
         drawCanvasArea.setLayoutX(0);
         drawCanvasArea.setLayoutY(0);
         drawCanvasArea.setPrefSize(currentScreenBounds.getWidth(), currentScreenBounds.getHeight());
-        drawCanvasArea.setMouseTransparent(true);
-    }
-
-    /**
-     * Create the base semi-transparent mask
-     *
-     * @return Rectangle representing the base mask
-     */
-    private Rectangle createBaseMask() {
-        Rectangle mask = new Rectangle();
-        mask.setFill(Color.color(0, 0, 0, 0));
-        mask.setMouseTransparent(false);
-        return mask;
-    }
-
-    /**
-     * 处理遮罩点击事件
-     */
-    private void handleMaskClick(javafx.scene.input.MouseEvent event) {
-        System.out.println("handleMaskClick(javafx.scene.input.MouseEvent event) ");
-        if (!isSelecting && selectionArea != null) {
-            double clickX = event.getScreenX();
-            double clickY = event.getScreenY();
-
-            // 获取当前选择区域的尺寸
-            double currentWidth = selectionArea.getWidth();
-            double currentHeight = selectionArea.getHeight();
-
-            // 计算新的选择区域边界
-            double newStartX = Math.min(selectionArea.getX(), clickX);
-            double newStartY = Math.min(selectionArea.getY(), clickY);
-            double newEndX = Math.max(selectionArea.getX() + currentWidth, clickX);
-            double newEndY = Math.max(selectionArea.getY() + currentHeight, clickY);
-
-            // 更新选择区域
-            selectionArea.setX(newStartX);
-            selectionArea.setY(newStartY);
-            selectionArea.setWidth(newEndX - newStartX);
-            selectionArea.setHeight(newEndY - newStartY);
-
-            // 更新边框
-            selectionBorder.setX(newStartX);
-            selectionBorder.setY(newStartY);
-            selectionBorder.setWidth(newEndX - newStartX);
-            selectionBorder.setHeight(newEndY - newStartY);
-
-            // 更新遮罩
-            selectClip();
-        }
     }
 
     /**
      * Update the mask to cover the taskbar
      */
-    private void updateTaskbarMask() {
-        if (!isTaskbarVisible || taskbarBounds == null) {
-            updateScreenMask(false);
-            return;
-        }
-
-        // Convert screen coordinates to scene coordinates
-        double x = taskbarBounds.getMinX() - currentScreenBounds.getMinX();
-        double y = taskbarBounds.getMinY() - currentScreenBounds.getMinY();
-
-        // Create taskbar mask
-        updateFullscreen(x, y, taskbarBounds.getWidth(), taskbarBounds.getHeight());
-
-        // Update the mask in the scene
-        Shape mask = Shape.subtract(fullscreenMask, selectionArea);
-        addBorder(mask);
-        root.getChildren().set(1, mask);
+    private void updateDrawCanvasMask(DrawCanvas drawCanvas, double x, double y, double width, double height) {
+        drawCanvas.setLayoutX(x);
+        drawCanvas.setLayoutY(y);
+        drawCanvas.setPrefSize(width, height);
+        drawCanvas.setStyle("-fx-border-color: #1e6deb; -fx-border-width: 3;");
     }
 
-    private void addBorder(Shape mask) {
-        mask.setFill(Color.color(0, 0, 0, 0.01));
-        mask.setMouseTransparent(false);
-        mask.setStroke(Color.RED);
-        mask.setStrokeWidth(2);
-        mask.setStrokeType(StrokeType.INSIDE);
-    }
+    private void realTimeSelection() {
+        double x = Math.min(startX, endX);
+        double y = Math.min(startY, endY);
+        double width = Math.abs(endX - startX);
+        double height = Math.abs(endY - startY);
 
-    /**
-     * Update the mask to cover the screen (excluding taskbar)
-     */
-    private void updateScreenMask(boolean ignoreTaskbar) {
-        // Set base mask to cover entire screen
-        updateFullscreen(0, 0, currentScreenBounds.getWidth(), currentScreenBounds.getHeight());
+        selectionArea.setX(x);
+        selectionArea.setY(y);
+        selectionArea.setWidth(width);
+        selectionArea.setHeight(height);
 
-        // If taskbar is visible, create a cut-out for it
-        if (isTaskbarVisible && taskbarBounds != null && !ignoreTaskbar) {
-            // Convert taskbar coordinates to scene coordinates
-            double taskbarX = taskbarBounds.getMinX() - currentScreenBounds.getMinX();
-            double taskbarY = taskbarBounds.getMinY() - currentScreenBounds.getMinY();
+        double screenWidth = currentScreenBounds.getWidth();
+        double screenHeight = currentScreenBounds.getHeight();
 
-            // Create a cut-out for the taskbar
-            Rectangle taskbarCutout = new Rectangle(
-                    taskbarX,
-                    taskbarY,
-                    taskbarBounds.getWidth(),
-                    taskbarBounds.getHeight()
-            );
-            // Subtract the taskbar area from the base mask
-            Shape mask = Shape.subtract(fullscreenMask, taskbarCutout);
-            addBorder(mask);
-            root.getChildren().set(1, mask);
-        } else {
-            // If no taskbar, just use the base mask
-            Shape mask = Shape.subtract(fullscreenMask, selectionArea);
-            addBorder(mask);
-            root.getChildren().set(1, mask);
-        }
+        // 更新上方遮罩
+        maskTop.setX(0);
+        maskTop.setY(0);
+        maskTop.setWidth(screenWidth);
+        maskTop.setHeight(y);
+
+        // 更新下方遮罩
+        maskBottom.setX(0);
+        maskBottom.setY(y + height);
+        maskBottom.setWidth(screenWidth);
+        maskBottom.setHeight(screenHeight - (y + height));
+
+        // 更新左侧遮罩
+        maskLeft.setX(0);
+        maskLeft.setY(y);
+        maskLeft.setWidth(x);
+        maskLeft.setHeight(height);
+
+        // 更新右侧遮罩
+        maskRight.setX(x + width);
+        maskRight.setY(y);
+        maskRight.setWidth(screenWidth - (x + width));
+        maskRight.setHeight(height);
     }
 
     /**
@@ -352,72 +320,11 @@ public class ScreenshotSelector {
      */
     private Rectangle createSelectionMask() {
         Rectangle mask = new Rectangle();
-        mask.setFill(Color.TRANSPARENT);
-        mask.setMouseTransparent(true);
+        mask.setFill(Color.rgb(0, 0, 0, 0.01));
+        mask.setStroke(Color.rgb(0, 99, 250, 1));
+        mask.setStrokeWidth(2);
+        mask.setStrokeType(StrokeType.OUTSIDE);
         return mask;
-    }
-
-    private Rectangle createSelectionBorder() {
-        Rectangle border = new Rectangle();
-        border.setFill(Color.rgb(0, 0, 0, 0.01));
-        border.setStroke(Color.rgb(20, 20, 200, MASK_OPACITY));
-        border.setStrokeWidth(3);
-        border.setStrokeType(StrokeType.OUTSIDE);
-        return border;
-    }
-
-    /**
-     * Update the selection overlay during dragging
-     */
-    private void updateSelectionOverlay() {
-        // Calculate selection bounds
-        double x = Math.min(startX, endX);
-        double y = Math.min(startY, endY);
-        double width = Math.abs(endX - startX);
-        double height = Math.abs(endY - startY);
-
-        // Update all mask layers
-        updateSelectionMask(x, y, width, height);
-        updateSelectionBorder(x, y, width, height);
-        selectClip();
-    }
-
-    private void updateFullscreen(double x, double y, double width, double height) {
-        fullscreenMask.setX(x);
-        fullscreenMask.setY(y);
-        fullscreenMask.setWidth(width);
-        fullscreenMask.setHeight(height);
-    }
-
-    /**
-     * Update the selection mask position and size
-     *
-     * @param x      X coordinate
-     * @param y      Y coordinate
-     * @param width  Width of selection
-     * @param height Height of selection
-     */
-    private void updateSelectionMask(double x, double y, double width, double height) {
-        selectionArea.setX(x);
-        selectionArea.setY(y);
-        selectionArea.setWidth(width);
-        selectionArea.setHeight(height);
-    }
-
-    private void updateSelectionBorder(double x, double y, double width, double height) {
-        selectionBorder.setX(x);
-        selectionBorder.setY(y);
-        selectionBorder.setWidth(width);
-        selectionBorder.setHeight(height);
-    }
-
-    /**
-     * Update the base mask by creating a "cut out" effect
-     */
-    private void selectClip() {
-        Shape clip = Shape.subtract(fullscreenMask, selectionArea);
-        clip.setFill(Color.color(0, 0, 0, MASK_OPACITY));
-        root.getChildren().set(1, clip);
     }
 
     /**
@@ -428,8 +335,8 @@ public class ScreenshotSelector {
     private void setupMouseHandlers(Scene scene) {
         scene.setOnMousePressed(event -> {
             if (isSelecting) {
+                drawCanvasArea.setStyle(null);
                 stopMouseTracking();
-                fullscreenMask.setFill(Color.color(0, 0, 0, MASK_OPACITY));
                 startX = event.getScreenX();
                 startY = event.getScreenY();
             }
@@ -437,46 +344,37 @@ public class ScreenshotSelector {
 
         scene.setOnMouseDragged(event -> {
             if (isSelecting) {
-                root.setClip(null);
-                updateFullscreen(0, 0, currentScreenBounds.getWidth(), currentScreenBounds.getHeight());
-                root.getChildren().set(1, fullscreenMask);
-
                 endX = event.getScreenX();
                 endY = event.getScreenY();
-                updateSelectionOverlay();
+                realTimeSelection();
             }
         });
 
         scene.setOnMouseReleased(event -> {
             if (isSelecting) {
-                handleMouseReleased(event, scene);
+                isSelecting = false;
+                handleMouseReleased(event);
             }
         });
     }
 
-    private void handleMouseReleased(javafx.scene.input.MouseEvent event, Scene scene) {
-        scene.setCursor(DEFAULT);
+    private void handleMouseReleased(javafx.scene.input.MouseEvent event) {
         endX = event.getScreenX();
         endY = event.getScreenY();
         isSelecting = false;
 
         updateSelectionAreaPosition();
 
-        // 设置新的处理器
         setupDragHandlers();
 
         if (floatingToolbar != null) {
             root.getChildren().remove(floatingToolbar.getToolbar());
             floatingToolbar = null;
         }
-        floatingToolbar = new FloatingToolbar(selectionBorder, root, drawCanvasArea, this);
+        floatingToolbar = new FloatingToolbar(selectionArea, root, drawCanvasArea, this);
     }
 
-    /**
-     * 更新选择区域的位置和大小
-     */
     private void updateSelectionAreaPosition() {
-        // 保存当前尺寸
         double currentWidth = selectionArea.getWidth();
         double currentHeight = selectionArea.getHeight();
 
@@ -485,24 +383,16 @@ public class ScreenshotSelector {
         double width = Math.abs(endX - startX);
         double height = Math.abs(endY - startY);
 
-        // 如果是新的选择（宽度或高度为0），使用计算出的尺寸
-        // 否则保持原有尺寸
         if (currentWidth <= 0 || currentHeight <= 0) {
             selectionArea.setWidth(width);
             selectionArea.setHeight(height);
-            selectionBorder.setWidth(width);
-            selectionBorder.setHeight(height);
         } else {
             selectionArea.setWidth(currentWidth);
             selectionArea.setHeight(currentHeight);
-            selectionBorder.setWidth(currentWidth);
-            selectionBorder.setHeight(currentHeight);
         }
 
         selectionArea.setX(x);
         selectionArea.setY(y);
-        selectionBorder.setX(x);
-        selectionBorder.setY(y);
     }
 
     /**
@@ -511,7 +401,6 @@ public class ScreenshotSelector {
     public void setupDragHandlers() {
         final double[] dragDelta = new double[2];
 
-        // 创建全屏检测区域
         Rectangle topArea = new Rectangle();
         Rectangle bottomArea = new Rectangle();
         Rectangle leftArea = new Rectangle();
@@ -588,12 +477,12 @@ public class ScreenshotSelector {
 
         ChangeListener<Number> positionListener =
                 (obs, oldVal, newVal)
-                        -> updateAreas.accept(selectionBorder);
+                        -> updateAreas.accept(selectionArea);
 
         // 添加检测区域到场景
         root.getChildren().addAll(dragAreas);
 
-        // 设置检测区域事件
+        // 设置事件处理器
         setupAreaEvents(topArea, "n", CURSOR_N, dragDelta);
         setupAreaEvents(bottomArea, "s", CURSOR_S, dragDelta);
         setupAreaEvents(leftArea, "w", CURSOR_W, dragDelta);
@@ -603,141 +492,69 @@ public class ScreenshotSelector {
         setupAreaEvents(bottomLeftArea, "sw", CURSOR_SW, dragDelta);
         setupAreaEvents(bottomRightArea, "se", CURSOR_SE, dragDelta);
 
-        // 更新检测区域位置
-        selectionBorder.xProperty().addListener(positionListener);
-        selectionBorder.yProperty().addListener(positionListener);
-        selectionBorder.widthProperty().addListener(positionListener);
-        selectionBorder.heightProperty().addListener(positionListener);
+        selectionArea.xProperty().addListener(positionListener);
+        selectionArea.yProperty().addListener(positionListener);
+        selectionArea.widthProperty().addListener(positionListener);
+        selectionArea.heightProperty().addListener(positionListener);
 
-        // 初始更新检测区域位置
-        updateAreas.accept(selectionBorder);
+        updateAreas.accept(selectionArea);
 
-        // 设置选择区域的鼠标进入/退出事件
-        selectionBorder.setOnMouseMoved(e -> {
-            selectionBorder.getScene().setCursor(CURSOR_MOVE);
+        selectionArea.setOnMouseMoved(e -> {
+            selectionArea.getScene().setCursor(CURSOR_MOVE);
         });
 
-        selectionBorder.setOnMousePressed(e -> {
-            dragDelta[0] = e.getSceneX() - selectionBorder.getX();
-            dragDelta[1] = e.getSceneY() - selectionBorder.getY();
+        selectionArea.setOnMousePressed(e -> {
+            dragDelta[0] = e.getSceneX() - selectionArea.getX();
+            dragDelta[1] = e.getSceneY() - selectionArea.getY();
             e.consume();
         });
 
-        selectionBorder.setOnMouseDragged(e -> {
+        selectionArea.setOnMouseDragged(e -> {
             handleDrag(e, dragDelta);
             e.consume();
         });
 
-        selectionBorder.setOnMouseReleased(e -> {
+        selectionArea.setOnMouseReleased(e -> {
             isResizing = false;
             resizeDirection = "";
         });
     }
 
     private void setupAreaEvents(Rectangle area, String direction, javafx.scene.Cursor cursor, double[] dragDelta) {
-        area.setOnMouseMoved(e -> {
+        area.setOnMouseEntered(e -> {
+            System.out.println("Mouse entered area: " + direction);
             area.getScene().setCursor(cursor);
+            e.consume();
+        });
+
+        area.setOnMouseExited(e -> {
+            System.out.println("Mouse exited area: " + direction);
+            area.getScene().setCursor(DEFAULT);
+            e.consume();
         });
 
         area.setOnMousePressed(e -> {
+            System.out.println("Mouse pressed on area: " + direction);
             isResizing = true;
             resizeDirection = direction;
             dragDelta[0] = e.getSceneX();
             dragDelta[1] = e.getSceneY();
             area.getScene().setCursor(cursor);
-
-            // 立即调整到鼠标位置
-            double mouseX = e.getSceneX();
-            double mouseY = e.getSceneY();
-            double currentX = selectionBorder.getX();
-            double currentY = selectionBorder.getY();
-            double currentWidth = selectionBorder.getWidth();
-            double currentHeight = selectionBorder.getHeight();
-
-            switch (direction) {
-                case "n":
-                    selectionBorder.setY(mouseY);
-                    selectionBorder.setHeight(currentHeight + (currentY - mouseY));
-                    selectionArea.setY(mouseY);
-                    selectionArea.setHeight(currentHeight + (currentY - mouseY));
-                    break;
-                case "s":
-                    selectionBorder.setHeight(mouseY - currentY);
-                    selectionArea.setHeight(mouseY - currentY);
-                    break;
-                case "e":
-                    selectionBorder.setWidth(mouseX - currentX);
-                    selectionArea.setWidth(mouseX - currentX);
-                    break;
-                case "w":
-                    selectionBorder.setX(mouseX);
-                    selectionBorder.setWidth(currentWidth + (currentX - mouseX));
-                    selectionArea.setX(mouseX);
-                    selectionArea.setWidth(currentWidth + (currentX - mouseX));
-                    break;
-                case "ne":
-                    // 调整上边框
-                    selectionBorder.setY(mouseY);
-                    selectionBorder.setHeight(currentHeight + (currentY - mouseY));
-                    selectionArea.setY(mouseY);
-                    selectionArea.setHeight(currentHeight + (currentY - mouseY));
-                    // 调整右边框
-                    selectionBorder.setWidth(mouseX - currentX);
-                    selectionArea.setWidth(mouseX - currentX);
-                    break;
-                case "nw":
-                    selectionBorder.setX(mouseX);
-                    selectionBorder.setY(mouseY);
-                    selectionBorder.setWidth(currentWidth + (currentX - mouseX));
-                    selectionBorder.setHeight(currentHeight + (currentY - mouseY));
-                    selectionArea.setX(mouseX);
-                    selectionArea.setY(mouseY);
-                    selectionArea.setWidth(currentWidth + (currentX - mouseX));
-                    selectionArea.setHeight(currentHeight + (currentY - mouseY));
-                    break;
-                case "se":
-                    // 只调整右边框和下边框
-                    selectionBorder.setWidth(mouseX - currentX);
-                    selectionBorder.setHeight(mouseY - currentY);
-                    selectionArea.setWidth(mouseX - currentX);
-                    selectionArea.setHeight(mouseY - currentY);
-                    break;
-                case "sw":
-                    selectionBorder.setX(mouseX);
-                    selectionBorder.setWidth(currentWidth + (currentX - mouseX));
-                    selectionBorder.setHeight(mouseY - currentY);
-                    selectionArea.setX(mouseX);
-                    selectionArea.setWidth(currentWidth + (currentX - mouseX));
-                    selectionArea.setHeight(mouseY - currentY);
-                    break;
-            }
-
-            // 确保最小尺寸
-            if (selectionBorder.getWidth() < 10) {
-                if (direction.contains("w")) {
-                    selectionBorder.setX(currentX + currentWidth - 10);
-                    selectionArea.setX(currentX + currentWidth - 10);
-                }
-                selectionBorder.setWidth(10);
-                selectionArea.setWidth(10);
-            }
-            if (selectionBorder.getHeight() < 10) {
-                if (direction.contains("n")) {
-                    selectionBorder.setY(currentY + currentHeight - 10);
-                    selectionArea.setY(currentY + currentHeight - 10);
-                }
-                selectionBorder.setHeight(10);
-                selectionArea.setHeight(10);
-            }
-
-            selectClip();
             e.consume();
         });
 
         area.setOnMouseDragged(e -> {
+            System.out.println("Mouse dragged on area: " + direction);
             if (isResizing) {
                 handleResize(e, dragDelta);
             }
+            e.consume();
+        });
+
+        area.setOnMouseReleased(e -> {
+            System.out.println("Mouse released on area: " + direction);
+            isResizing = false;
+            resizeDirection = "";
             e.consume();
         });
     }
@@ -745,128 +562,162 @@ public class ScreenshotSelector {
     private void handleResize(javafx.scene.input.MouseEvent e, double[] dragDelta) {
         double deltaX = e.getSceneX() - dragDelta[0];
         double deltaY = e.getSceneY() - dragDelta[1];
-        double newX = selectionBorder.getX();
-        double newY = selectionBorder.getY();
-        double newWidth = selectionBorder.getWidth();
-        double newHeight = selectionBorder.getHeight();
+        double newX = selectionArea.getX();
+        double newY = selectionArea.getY();
+        double newWidth = selectionArea.getWidth();
+        double newHeight = selectionArea.getHeight();
         boolean flipped = false;
 
         // 根据调整方向更新位置和大小
         switch (resizeDirection) {
             case "n": // 上边框
-                newY += deltaY;
-                newHeight -= deltaY;
-                if (newHeight < 10) {
-                    newY = selectionBorder.getY() + selectionBorder.getHeight() - 10;
-                    newHeight = 10;
+                if (deltaY > newHeight - 10) {
+                    // 向下翻转
                     resizeDirection = "s";
                     flipped = true;
+                    newY = newY + newHeight;
+                    newHeight = 10;
+                } else {
+                    newY += deltaY;
+                    newHeight -= deltaY;
                 }
                 break;
             case "s": // 下边框
                 newHeight += deltaY;
                 if (newHeight < 10) {
+                    // 向上翻转
                     newHeight = 10;
                     resizeDirection = "n";
                     flipped = true;
+                    newY = newY + newHeight - 10;
                 }
                 break;
             case "e": // 右边框
                 newWidth += deltaX;
                 if (newWidth < 10) {
+                    // 向左翻转
                     newWidth = 10;
                     resizeDirection = "w";
                     flipped = true;
+                    newX = newX + newWidth - 10;
                 }
                 break;
             case "w": // 左边框
-                newX += deltaX;
-                newWidth -= deltaX;
-                if (newWidth < 10) {
-                    newX = selectionBorder.getX() + selectionBorder.getWidth() - 10;
-                    newWidth = 10;
+                if (deltaX > newWidth - 10) {
+                    // 向右翻转
                     resizeDirection = "e";
                     flipped = true;
+                    newX = newX + newWidth;
+                    newWidth = 10;
+                } else {
+                    newX += deltaX;
+                    newWidth -= deltaX;
                 }
                 break;
             case "ne": // 右上角
-                newY += deltaY;
-                newHeight -= deltaY;
-                newWidth += deltaX;
-                if (newHeight < 10) {
-                    newY = selectionBorder.getY() + selectionBorder.getHeight() - 10;
-                    newHeight = 10;
+                // 处理上边框
+                if (deltaY > newHeight - 10) {
+                    // 向下翻转
                     resizeDirection = "se";
                     flipped = true;
+                    newY = newY + newHeight;
+                    newHeight = 10;
+                } else {
+                    newY += deltaY;
+                    newHeight -= deltaY;
                 }
+                // 处理右边框
+                newWidth += deltaX;
                 if (newWidth < 10) {
+                    // 向左翻转
                     newWidth = 10;
                     resizeDirection = "nw";
                     flipped = true;
+                    newX = newX + newWidth - 10;
                 }
                 break;
             case "nw": // 左上角
-                newX += deltaX;
-                newY += deltaY;
-                newWidth -= deltaX;
-                newHeight -= deltaY;
-                if (newHeight < 10) {
-                    newY = selectionBorder.getY() + selectionBorder.getHeight() - 10;
-                    newHeight = 10;
+                // 处理上边框
+                if (deltaY > newHeight - 10) {
+                    // 向下翻转
                     resizeDirection = "sw";
                     flipped = true;
+                    newY = newY + newHeight;
+                    newHeight = 10;
+                } else {
+                    newY += deltaY;
+                    newHeight -= deltaY;
                 }
-                if (newWidth < 10) {
-                    newX = selectionBorder.getX() + selectionBorder.getWidth() - 10;
-                    newWidth = 10;
+                // 处理左边框
+                if (deltaX > newWidth - 10) {
+                    // 向右翻转
                     resizeDirection = "ne";
                     flipped = true;
+                    newX = newX + newWidth;
+                    newWidth = 10;
+                } else {
+                    newX += deltaX;
+                    newWidth -= deltaX;
                 }
                 break;
             case "se": // 右下角
-                newWidth += deltaX;
+                // 处理下边框
                 newHeight += deltaY;
                 if (newHeight < 10) {
+                    // 向上翻转
                     newHeight = 10;
                     resizeDirection = "ne";
                     flipped = true;
+                    newY = newY + newHeight - 10;
                 }
+                // 处理右边框
+                newWidth += deltaX;
                 if (newWidth < 10) {
+                    // 向左翻转
                     newWidth = 10;
                     resizeDirection = "sw";
                     flipped = true;
+                    newX = newX + newWidth - 10;
                 }
                 break;
             case "sw": // 左下角
-                newX += deltaX;
-                newWidth -= deltaX;
+                // 处理下边框
                 newHeight += deltaY;
                 if (newHeight < 10) {
+                    // 向上翻转
                     newHeight = 10;
                     resizeDirection = "nw";
                     flipped = true;
+                    newY = newY + newHeight - 10;
                 }
-                if (newWidth < 10) {
-                    newX = selectionBorder.getX() + selectionBorder.getWidth() - 10;
-                    newWidth = 10;
+                // 处理左边框
+                if (deltaX > newWidth - 10) {
+                    // 向右翻转
                     resizeDirection = "se";
                     flipped = true;
+                    newX = newX + newWidth;
+                    newWidth = 10;
+                } else {
+                    newX += deltaX;
+                    newWidth -= deltaX;
                 }
                 break;
         }
 
-        // 更新选择区域和边框
+        // 更新选择区域
         selectionArea.setX(newX);
         selectionArea.setY(newY);
         selectionArea.setWidth(newWidth);
         selectionArea.setHeight(newHeight);
-        selectionBorder.setX(newX);
-        selectionBorder.setY(newY);
-        selectionBorder.setWidth(newWidth);
-        selectionBorder.setHeight(newHeight);
 
-        // 更新遮罩
-        selectClip();
+        // 更新起点和终点坐标，用于realTimeSelection
+        startX = newX;
+        startY = newY;
+        endX = newX + newWidth;
+        endY = newY + newHeight;
+
+        // 实时更新遮罩
+        realTimeSelection();
 
         // 更新拖动起点
         dragDelta[0] = e.getSceneX();
@@ -874,8 +725,35 @@ public class ScreenshotSelector {
 
         // 如果发生翻转，更新光标
         if (flipped) {
-            selectionBorder.getScene().setCursor(getResizeCursor(resizeDirection));
+            selectionArea.getScene().setCursor(getResizeCursor(resizeDirection));
         }
+    }
+
+    private void handleDrag(javafx.scene.input.MouseEvent e, double[] dragDelta) {
+        double newX = e.getSceneX() - dragDelta[0];
+        double newY = e.getSceneY() - dragDelta[1];
+
+        // 限制边界（不能移出屏幕）
+        Rectangle2D screenBounds = currentScreen.getBounds();
+        double minX = screenBounds.getMinX();
+        double minY = screenBounds.getMinY();
+        double maxX = screenBounds.getMaxX() - selectionArea.getWidth();
+        double maxY = screenBounds.getMaxY() - selectionArea.getHeight();
+
+        double finalX = Math.max(minX, Math.min(maxX, newX));
+        double finalY = Math.max(minY, Math.min(maxY, newY));
+
+        selectionArea.setX(finalX);
+        selectionArea.setY(finalY);
+
+        // 更新起点和终点坐标，用于realTimeSelection
+        startX = finalX;
+        startY = finalY;
+        endX = finalX + selectionArea.getWidth();
+        endY = finalY + selectionArea.getHeight();
+
+        // 实时更新遮罩
+        realTimeSelection();
     }
 
     private javafx.scene.Cursor getResizeCursor(String direction) {
@@ -890,28 +768,6 @@ public class ScreenshotSelector {
             case "sw" -> CURSOR_SW;
             default -> DEFAULT;
         };
-    }
-
-    private void handleDrag(javafx.scene.input.MouseEvent e, double[] dragDelta) {
-        double newX = e.getSceneX() - dragDelta[0];
-        double newY = e.getSceneY() - dragDelta[1];
-
-        // 限制边界（不能移出屏幕）
-        Rectangle2D screenBounds = currentScreen.getBounds();
-        double minX = screenBounds.getMinX();
-        double minY = screenBounds.getMinY();
-        double maxX = screenBounds.getMaxX() - selectionBorder.getWidth();
-        double maxY = screenBounds.getMaxY() - selectionBorder.getHeight();
-
-        double finalX = Math.max(minX, Math.min(maxX, newX));
-        double finalY = Math.max(minY, Math.min(maxY, newY));
-
-        selectionArea.setX(finalX);
-        selectionArea.setY(finalY);
-        selectionBorder.setX(finalX);
-        selectionBorder.setY(finalY);
-
-        selectClip();
     }
 
     /**
@@ -960,7 +816,7 @@ public class ScreenshotSelector {
     }
 
     public Rectangle getSelectionArea() {
-        return selectionBorder;
+        return selectionArea;
     }
 
     private static ImageCursor createCustomCursor() {
