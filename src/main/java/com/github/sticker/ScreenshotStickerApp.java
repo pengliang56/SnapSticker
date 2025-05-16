@@ -49,6 +49,9 @@ public class ScreenshotStickerApp extends Application {
         if (!SystemTray.isSupported()) {
             Platform.exit();
         } else {
+            System.setProperty("prism.order", "d3d,sw");
+            System.setProperty("prism.vsync", "true");
+
             checkAndHandleExistingInstance();
             // Initialize screen manager
             ScreenManager screenManager = new ScreenManager();

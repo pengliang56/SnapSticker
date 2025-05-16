@@ -62,7 +62,6 @@ public class ScreenshotSelector {
     private boolean isTaskbarVisible;
     private Screen currentScreen;      // Track current screen
 
-    private static final double RESIZE_THRESHOLD = 5.0; // 边框调整的检测范围
     private boolean isResizing = false;
     private String resizeDirection = ""; // 记录调整方向：n, s, e, w, ne, nw, se, sw
 
@@ -320,6 +319,8 @@ public class ScreenshotSelector {
      */
     private Rectangle createSelectionMask() {
         Rectangle mask = new Rectangle();
+        mask.setCache(true);
+        mask.setCacheHint(CacheHint.SPEED);
         mask.setFill(Color.rgb(0, 0, 0, 0.01));
         mask.setStroke(Color.rgb(0, 99, 250, 1));
         mask.setStrokeWidth(2);
@@ -527,14 +528,14 @@ public class ScreenshotSelector {
         });
 
         area.setOnMouseExited(e -> {
-            area.getScene().setCursor(DEFAULT);
+            area.getScene().setCursor(cursor);
             e.consume();
         });
 
         area.setOnMousePressed(e -> {
             isResizing = true;
             resizeDirection = direction;
-            
+
             // Get current mouse position and selection area dimensions
             double mouseX = e.getScreenX();
             double mouseY = e.getScreenY();
@@ -542,7 +543,7 @@ public class ScreenshotSelector {
             double height = selectionArea.getHeight();
             double x = selectionArea.getX();
             double y = selectionArea.getY();
-            
+
             // Adjust selection area based on which edge/corner was clicked
             switch (direction) {
                 case "n" -> { // Top edge
@@ -586,20 +587,20 @@ public class ScreenshotSelector {
                     selectionArea.setHeight(mouseY - y);
                 }
             }
-            
+
             // Update coordinates for real-time selection
             startX = selectionArea.getX();
             startY = selectionArea.getY();
             endX = startX + selectionArea.getWidth();
             endY = startY + selectionArea.getHeight();
-            
+
             // Update masks
             realTimeSelection();
-            
+
             // Update drag delta for subsequent drag operations
             dragDelta[0] = e.getSceneX();
             dragDelta[1] = e.getSceneY();
-            
+
             area.getScene().setCursor(cursor);
             e.consume();
         });
