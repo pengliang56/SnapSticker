@@ -263,6 +263,7 @@ public class FloatingToolbar {
         subToolbar.setPickOnBounds(false);
         subToolbar.setSpacing(16);
         subToolbar.setAlignment(Pos.CENTER);
+        subToolbar.setCursor(Cursor.DEFAULT);
 
         subToolbar.setStyle("""
                 -fx-background-color: rgba(45, 45, 45, 0.95);
