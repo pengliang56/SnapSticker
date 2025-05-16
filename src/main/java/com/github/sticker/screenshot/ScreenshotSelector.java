@@ -522,19 +522,16 @@ public class ScreenshotSelector {
 
     private void setupAreaEvents(Rectangle area, String direction, javafx.scene.Cursor cursor, double[] dragDelta) {
         area.setOnMouseEntered(e -> {
-            System.out.println("Mouse entered area: " + direction);
             area.getScene().setCursor(cursor);
             e.consume();
         });
 
         area.setOnMouseExited(e -> {
-            System.out.println("Mouse exited area: " + direction);
             area.getScene().setCursor(DEFAULT);
             e.consume();
         });
 
         area.setOnMousePressed(e -> {
-            System.out.println("Mouse pressed on area: " + direction);
             isResizing = true;
             resizeDirection = direction;
             dragDelta[0] = e.getSceneX();
@@ -544,7 +541,6 @@ public class ScreenshotSelector {
         });
 
         area.setOnMouseDragged(e -> {
-            System.out.println("Mouse dragged on area: " + direction);
             if (isResizing) {
                 handleResize(e, dragDelta);
             }
@@ -552,7 +548,6 @@ public class ScreenshotSelector {
         });
 
         area.setOnMouseReleased(e -> {
-            System.out.println("Mouse released on area: " + direction);
             isResizing = false;
             resizeDirection = "";
             e.consume();
