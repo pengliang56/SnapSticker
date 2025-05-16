@@ -534,8 +534,72 @@ public class ScreenshotSelector {
         area.setOnMousePressed(e -> {
             isResizing = true;
             resizeDirection = direction;
+            
+            // Get current mouse position and selection area dimensions
+            double mouseX = e.getScreenX();
+            double mouseY = e.getScreenY();
+            double width = selectionArea.getWidth();
+            double height = selectionArea.getHeight();
+            double x = selectionArea.getX();
+            double y = selectionArea.getY();
+            
+            // Adjust selection area based on which edge/corner was clicked
+            switch (direction) {
+                case "n" -> { // Top edge
+                    double deltaY = mouseY - y;
+                    selectionArea.setY(mouseY);
+                    selectionArea.setHeight(height - deltaY);
+                }
+                case "s" -> { // Bottom edge
+                    selectionArea.setHeight(mouseY - y);
+                }
+                case "e" -> { // Right edge
+                    selectionArea.setWidth(mouseX - x);
+                }
+                case "w" -> { // Left edge
+                    double deltaX = mouseX - x;
+                    selectionArea.setX(mouseX);
+                    selectionArea.setWidth(width - deltaX);
+                }
+                case "ne" -> { // Top-right corner
+                    double deltaY = mouseY - y;
+                    selectionArea.setY(mouseY);
+                    selectionArea.setHeight(height - deltaY);
+                    selectionArea.setWidth(mouseX - x);
+                }
+                case "nw" -> { // Top-left corner
+                    double deltaY = mouseY - y;
+                    double deltaX = mouseX - x;
+                    selectionArea.setX(mouseX);
+                    selectionArea.setY(mouseY);
+                    selectionArea.setWidth(width - deltaX);
+                    selectionArea.setHeight(height - deltaY);
+                }
+                case "se" -> { // Bottom-right corner
+                    selectionArea.setWidth(mouseX - x);
+                    selectionArea.setHeight(mouseY - y);
+                }
+                case "sw" -> { // Bottom-left corner
+                    double deltaX = mouseX - x;
+                    selectionArea.setX(mouseX);
+                    selectionArea.setWidth(width - deltaX);
+                    selectionArea.setHeight(mouseY - y);
+                }
+            }
+            
+            // Update coordinates for real-time selection
+            startX = selectionArea.getX();
+            startY = selectionArea.getY();
+            endX = startX + selectionArea.getWidth();
+            endY = startY + selectionArea.getHeight();
+            
+            // Update masks
+            realTimeSelection();
+            
+            // Update drag delta for subsequent drag operations
             dragDelta[0] = e.getSceneX();
             dragDelta[1] = e.getSceneY();
+            
             area.getScene().setCursor(cursor);
             e.consume();
         });
