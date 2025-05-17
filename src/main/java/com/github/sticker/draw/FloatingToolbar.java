@@ -261,8 +261,8 @@ public class FloatingToolbar {
 
         subToolbar.getStyleClass().add("sub-toolbar");
 
+        subToolbar.setManaged(true);
         subToolbar.setVisible(false);
-        subToolbar.setManaged(false);
 
         sizeSlider.setShowTickLabels(false);
         sizeSlider.setShowTickMarks(false);
@@ -270,16 +270,12 @@ public class FloatingToolbar {
                 drawCanvas.setStrokeWidth(newSize.doubleValue())
         );
 
-        HBox colorButtons = createColorButtons();
-
-        Separator separator = createStyledSeparator();
-
         subToolbar.getChildren().addAll(
                 sizeSlider,
-                separator,
-                colorButtons
+                createStyledSeparator(),
+                createColorButtons()
         );
-
+        updateSubToolbarPosition();
         parentContainer.getChildren().add(subToolbar);
     }
 
@@ -446,7 +442,6 @@ public class FloatingToolbar {
                         }, selectionArea.yProperty(), selectionArea.heightProperty(),
                         parentContainer.heightProperty(), toolbar.heightProperty())
         );
-        updateSubToolbarPosition();
     }
 
     private WritableImage snapshotScreen() {
