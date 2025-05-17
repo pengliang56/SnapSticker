@@ -220,7 +220,20 @@ public class FloatingToolbar {
         fade.setToValue(isVisible ? 0.0 : 1.0);
         fade.play();
 
+        FadeTransition subFade = new FadeTransition(Duration.millis(150), subToolbar);
+        subFade.setFromValue(isVisible ? 1.0 : 0.0);
+        subFade.setToValue(isVisible ? 0.0 : 1.0);
+        subFade.play();
+
         toolbar.setMouseTransparent(!isVisible);
+        subToolbar.setMouseTransparent(!isVisible);
+        
+        // If currently in draw mode, cancel it
+        if (!isVisible && currentMode != DrawMode.NONE) {
+            currentMode = DrawMode.NONE;
+            drawMode(false);
+        }
+
         isVisible = !isVisible;
     }
 
@@ -478,13 +491,11 @@ public class FloatingToolbar {
     private WritableImage snapshotScreen() {
         Rectangle selectionArea = screenshotSelector.getSelectionArea();
 
-        // 获取屏幕选区坐标和尺寸
         double x = selectionArea.getX();
         double y = selectionArea.getY();
         double width = selectionArea.getWidth();
         double height = selectionArea.getHeight();
 
-        // 1. 获取屏幕截图
         Robot robot;
         try {
             robot = new Robot();
@@ -492,8 +503,9 @@ public class FloatingToolbar {
             throw new RuntimeException("Failed to create Robot instance", e);
         }
 
-        // 将JavaFX坐标转换为AWT屏幕坐标
-        Point2D sceneCoords = drawCanvas.localToScreen(x, y);
+        Scene scene = drawCanvas.getScene();
+        Point2D sceneCoords = scene.getRoot().localToScreen(x, y);
+
         java.awt.Rectangle awtRect = new java.awt.Rectangle(
                 (int) sceneCoords.getX(),
                 (int) sceneCoords.getY(),
@@ -503,32 +515,8 @@ public class FloatingToolbar {
 
         BufferedImage screenImage = robot.createScreenCapture(awtRect);
 
-        // 2. 获取画布内容
-        WritableImage canvasImage = drawCanvas.snapshot(null, null);
-
-        // 3. 合并两张图片
         WritableImage finalImage = new WritableImage((int) width, (int) height);
-        PixelWriter writer = finalImage.getPixelWriter();
-
-        // 先绘制屏幕截图
-        for (int i = 0; i < width; i++) {
-            for (int j = 0; j < height; j++) {
-                int argb = screenImage.getRGB(i, j);
-                writer.setArgb(i, j, argb);
-            }
-        }
-
-        // 再叠加绘制画布内容（只绘制非透明像素）
-        PixelReader reader = canvasImage.getPixelReader();
-        for (int i = 0; i < width; i++) {
-            for (int j = 0; j < height; j++) {
-                Color color = reader.getColor((int) (x + i), (int) (y + j));
-                if (color.getOpacity() > 0) { // 只绘制不透明的像素
-                    writer.setColor(i, j, color);
-                }
-            }
-        }
-
+        SwingFXUtils.toFXImage(screenImage, finalImage);
         return finalImage;
     }
 
