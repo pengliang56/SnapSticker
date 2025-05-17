@@ -502,9 +502,13 @@ public class FloatingToolbar {
     private void aiToolbar(DrawMode selectMode, boolean drawMode) {
         if (selectMode == DrawMode.SWITCH) {
             switchDirection = !switchDirection;
-            FadeTransition animation = animation(toolbar, switchDirection);
-            animation.setOnFinished(it -> animation(subToolbar, true).play());
-            animation.play();
+            if (subToolbar.isVisible()) {
+                FadeTransition subFade = animation(subToolbar, true);
+                subFade.setOnFinished(it -> animation(toolbar, switchDirection).play());
+                subFade.play();
+            } else {
+                animation(toolbar, switchDirection).play();
+            }
         } else if (selectMode == DrawMode.NONE) {
             // todo
         } else {
