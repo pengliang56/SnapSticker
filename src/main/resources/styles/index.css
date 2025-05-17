@@ -1,0 +1,68 @@
+.tool-button {
+    -fx-background-color: #424242;
+    -fx-background-radius: 4;
+    -fx-min-width: 32;
+    -fx-min-height: 32;
+    -fx-cursor: hand;
+    -fx-border-width: 0;
+}
+
+/* 主工具栏按钮悬停效果 */
+.tool-button:hover {
+    -fx-background-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* 激活状态指示 */
+.tool-button.active {
+    -fx-background-color: #616161 !important;
+    -fx-border-color: #2196F3 !important;
+    -fx-border-width: 2 !important;
+    -fx-border-radius: 4;
+}
+
+/* 子工具栏样式 */
+.sub-toolbar {
+    -fx-background-color: rgba(50, 50, 50, 0.95);
+    -fx-padding: 6 12;
+    -fx-spacing: 10;
+    -fx-background-radius: 8;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.3), 10, 0.5, 0, 2);
+}
+
+.slider .thumb {
+    -fx-background-color: #2196F3;
+    -fx-pref-height: 12;
+    -fx-pref-width: 12;
+}
+
+.slider .track {
+    -fx-background-color: #666;
+    -fx-pref-height: 4;
+}
+
+.sub-cus {
+    -fx-background-color: rgba(45, 45, 45, 0.95);
+    -fx-background-radius: 8;
+    -fx-padding: 8 16;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.2), 10, 0, 0, 2);
+}
+
+.toolbar {
+    -fx-background-color: rgba(50, 50, 50, 0.95);
+    -fx-background-radius: 8;
+    -fx-padding: 6;
+    -fx-spacing: 8;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.3), 10, 0.5, 0, 2);
+}
+
+.sepaCus {
+    -fx-background-color: null;
+    -fx-border-color: #a0a0a0;
+    -fx-border-width: 0 2 0 0;
+    -fx-padding: 0;
+    -fx-min-height: 20px;
+    -fx-pref-height: 20px;
+    -fx-max-height: 20px;
+    -fx-alignment: center;
+    -fx-content-display: center;
+}

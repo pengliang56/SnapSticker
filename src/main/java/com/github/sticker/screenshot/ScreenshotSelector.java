@@ -24,6 +24,7 @@ import java.awt.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Consumer;
 
 import static com.github.sticker.draw.Icon.createDirectionalCursor;
@@ -142,6 +143,9 @@ public class ScreenshotSelector {
         Scene scene = new Scene(root, currentScreenBounds.getWidth(), currentScreenBounds.getHeight());
         scene.setFill(Color.rgb(0, 0, 0, 0.01));
         scene.setCursor(customCursor);
+        scene.getStylesheets().add(
+                Objects.requireNonNull(getClass().getResource("/styles/index.css")).toExternalForm()
+        );
         return scene;
     }
 

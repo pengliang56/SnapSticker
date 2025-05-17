@@ -4,6 +4,7 @@ public enum DrawMode {
     NONE,
     PEN,
     RECTANGLE,
+    SWITCH,
     LINE,
     ;
 

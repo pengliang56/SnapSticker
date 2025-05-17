@@ -12,8 +12,6 @@ import javafx.scene.Cursor;
 import javafx.scene.control.*;
 import javafx.scene.control.Button;
 import javafx.scene.effect.DropShadow;
-import javafx.scene.image.PixelReader;
-import javafx.scene.image.PixelWriter;
 import javafx.scene.image.WritableImage;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
@@ -33,28 +31,33 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.util.Objects;
 
+import static com.github.sticker.draw.DrawMode.*;
 import static com.github.sticker.draw.Icon.createDirectionalCursor;
 import static com.github.sticker.draw.Icon.point;
 
 public class FloatingToolbar {
     private DrawMode currentMode = DrawMode.NONE;
+    private Button activeButton;
+    private boolean switchDirection = false;
 
-    private final HBox toolbar = new HBox(8);
-    private final HBox subToolbar = new HBox(10);
-    private final ColorPicker colorPicker = new ColorPicker();
-    private final Slider sizeSlider = new Slider(1, 20, 3);
 
+    // ----------------------------------------------------
     private final Rectangle selectionArea;
     private final Pane parentContainer;
-    private boolean isVisible = true;
 
+
+    // ----------------------------------------------------
     private Button penButton;
     private Button rectButton;
     private Button lineButton;
     private final DrawCanvas drawCanvas;
-    private Button activeButton;
+
+    // ----------------------------------------------------
+    private final HBox toolbar = new HBox(8);
+    private final HBox subToolbar = new HBox(10);
+    private final ColorPicker colorPicker = new ColorPicker();
+    private final Slider sizeSlider = new Slider(1, 20, 3);
 
     private final ScreenshotSelector screenshotSelector;
 
@@ -80,10 +83,7 @@ public class FloatingToolbar {
 
     private void createLineButton() {
         lineButton = createIconButton(Icon.line, "Line (L)");
-        lineButton.setOnAction(e -> {
-            currentMode = DrawMode.switchMode(currentMode, DrawMode.LINE);
-            activateTool(lineButton);
-        });
+        lineButton.setOnAction(e -> activateTool(lineButton, DrawMode.LINE));
         toolbar.getChildren().add(lineButton);
     }
 
@@ -121,12 +121,6 @@ public class FloatingToolbar {
         toolbar.getChildren().add(btn);
     }
 
-    private void createCloseButton() {
-        Button btn = createIconButton(Icon.clode, "Close");
-        btn.setOnAction(e -> screenshotSelector.cancelSelection());
-        toolbar.getChildren().add(btn);
-    }
-
     private void createSaveButton() {
         Button btn = createIconButton(Icon.save, "Save to file");
         btn.setOnAction(e -> {
@@ -159,19 +153,13 @@ public class FloatingToolbar {
 
     private void createBrushButton() {
         penButton = createIconButton(Icon.pencil, "Pencil");
-        penButton.setOnAction(e -> {
-            currentMode = DrawMode.switchMode(currentMode, DrawMode.PEN);
-            activateTool(penButton);
-        });
+        penButton.setOnAction(e -> activateTool(penButton, PEN));
         toolbar.getChildren().add(penButton);
     }
 
     private void createRectButton() {
         rectButton = createIconButton(Icon.rectangle, "Rectangle");
-        rectButton.setOnAction(e -> {
-            currentMode = DrawMode.switchMode(currentMode, DrawMode.RECTANGLE);
-            activateTool(rectButton);
-        });
+        rectButton.setOnAction(e -> activateTool(rectButton, RECTANGLE));
         toolbar.getChildren().add(rectButton);
     }
 
@@ -183,12 +171,15 @@ public class FloatingToolbar {
 
     private void setupKeyboardToggle() {
         Scene scene = parentContainer.getScene();
-        scene.addEventHandler(KeyEvent.KEY_PRESSED, e -> {
+        scene.addEventFilter(KeyEvent.KEY_PRESSED, e -> {
             if (e.getCode() == KeyCode.SPACE) {
-                toggleVisibility();
+                drawMode(null, DrawMode.SWITCH);
                 e.consume();
             }
         });
+
+        parentContainer.setFocusTraversable(true);
+        parentContainer.setOnMouseClicked(e -> parentContainer.requestFocus());
     }
 
     private Button createIconButton(String svgPath, String tooltipText) {
@@ -214,29 +205,6 @@ public class FloatingToolbar {
         return btn;
     }
 
-    private void toggleVisibility() {
-        FadeTransition fade = new FadeTransition(Duration.millis(150), toolbar);
-        fade.setFromValue(isVisible ? 1.0 : 0.0);
-        fade.setToValue(isVisible ? 0.0 : 1.0);
-        fade.play();
-
-        FadeTransition subFade = new FadeTransition(Duration.millis(150), subToolbar);
-        subFade.setFromValue(isVisible ? 1.0 : 0.0);
-        subFade.setToValue(isVisible ? 0.0 : 1.0);
-        subFade.play();
-
-        toolbar.setMouseTransparent(!isVisible);
-        subToolbar.setMouseTransparent(!isVisible);
-        
-        // If currently in draw mode, cancel it
-        if (!isVisible && currentMode != DrawMode.NONE) {
-            currentMode = DrawMode.NONE;
-            drawMode(false);
-        }
-
-        isVisible = !isVisible;
-    }
-
     private void baseStyle() {
         toolbar.setStyle(
                 "-fx-background-color: rgba(50, 50, 50, 0.95);" +
@@ -251,25 +219,38 @@ public class FloatingToolbar {
         return toolbar;
     }
 
-    public void drawMode(boolean drawMode) {
-        parentContainer.getChildren().forEach(it -> it.setMouseTransparent(drawMode));
-        drawCanvas.setMouseTransparent(!drawMode);
+    public void drawMode(Button handleButton, DrawMode selectMode) {
+        boolean drawMode = false;
+        switch (selectMode) {
+            case PEN, RECTANGLE, LINE -> {
+                if (currentMode != selectMode) {
+                    drawMode = true;
+                }
+            }
+        }
 
+        boolean finalDrawMode = drawMode;
+        parentContainer.getChildren().forEach(it -> it.setMouseTransparent(finalDrawMode));
+        drawCanvas.setMouseTransparent(!drawMode);
         subToolbar.setMouseTransparent(false);
         toolbar.setMouseTransparent(false);
 
-        subToolbar.setVisible(drawMode);
-        subToolbar.setManaged(drawMode);
-        if (!drawMode) {
+        aiToolbar(selectMode, drawMode);
+        if (activeButton != null) {
             activeButton.getStyleClass().remove("active");
-            activeButton = null;
-            drawCanvas.setCursor(Cursor.DEFAULT);
-        } else {
+        }
+        if (drawMode) {
             colorPicker.setValue(drawCanvas.getStrokeColor());
             sizeSlider.setValue(drawCanvas.getStrokeWidth());
-            activeButton.getStyleClass().add("active");
+            handleButton.getStyleClass().add("active");
             drawCanvas.setCursor(createDirectionalCursor(point));
+        } else {
+            if (handleButton != null) {
+                drawCanvas.setCursor(Cursor.DEFAULT);
+            }
         }
+        currentMode = switchMode(currentMode, selectMode);
+        activeButton = handleButton;
     }
 
     private void createSubToolbar() {
@@ -278,19 +259,11 @@ public class FloatingToolbar {
         subToolbar.setAlignment(Pos.CENTER);
         subToolbar.setCursor(Cursor.DEFAULT);
 
-        subToolbar.setStyle("""
-                -fx-background-color: rgba(45, 45, 45, 0.95);
-                -fx-background-radius: 8;
-                -fx-padding: 8 16;
-                -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 10, 0, 0, 2);
-                """);
+        subToolbar.getStyleClass().add("sub-toolbar");
 
         subToolbar.setVisible(false);
         subToolbar.setManaged(false);
 
-        sizeSlider.setStyle("""
-                -fx-pref-width: 100;
-                """);
         sizeSlider.setShowTickLabels(false);
         sizeSlider.setShowTickMarks(false);
         sizeSlider.valueProperty().addListener((obs, old, newSize) ->
@@ -401,29 +374,17 @@ public class FloatingToolbar {
         );
     }
 
-    public void activateTool(Button handleButton) {
-        if (activeButton != null) {
-            activeButton.getStyleClass().remove("active");
-        }
+    public void activateTool(Button handleButton, DrawMode selectedDrawMode) {
+        drawMode(handleButton, selectedDrawMode);
 
-        activeButton = handleButton;
-        if (currentMode != DrawMode.NONE) {
-            drawMode(true);
-        }
-        switch (currentMode) {
+        switch (selectedDrawMode) {
             case PEN -> drawCanvas.setupPenTool();
             case RECTANGLE -> drawCanvas.setupRectTool();
             case LINE -> drawCanvas.setupLineTool();
-            case NONE -> drawMode(false);
         }
     }
 
     private void initializeToolbar() {
-        toolbar.getStylesheets().add(
-                Objects.requireNonNull(getClass().getResource("/styles/toolbar.css")).toExternalForm()
-        );
-
-        baseStyle();
         createButtons();
         setupBottomPositionBinding();
         setupKeyboardToggle();
@@ -523,18 +484,7 @@ public class FloatingToolbar {
     private Separator createStyledSeparator() {
         Separator separator = new Separator(Orientation.VERTICAL);
         separator.getStyleClass().clear();
-
-        separator.setStyle("""
-                -fx-background-color: null;
-                -fx-border-color: #a0a0a0;
-                -fx-border-width: 0 2 0 0;
-                -fx-padding: 0;
-                -fx-min-height: 20px;
-                -fx-pref-height: 20px;
-                -fx-max-height: 20px;
-                -fx-alignment: center;
-                -fx-content-display: center;
-                """);
+        separator.getStyleClass().add("sepaCus");
         return separator;
     }
 
@@ -547,6 +497,46 @@ public class FloatingToolbar {
         SnapshotParameters params = new SnapshotParameters();
         params.setFill(Color.TRANSPARENT);
         return svg.snapshot(params, null);
+    }
+
+    private void aiToolbar(DrawMode selectMode, boolean drawMode) {
+        if (selectMode == DrawMode.SWITCH) {
+            switchDirection = !switchDirection;
+            FadeTransition animation = animation(toolbar, switchDirection);
+            animation.setOnFinished(it -> animation(subToolbar, true).play());
+            animation.play();
+        } else if (selectMode == DrawMode.NONE) {
+            // todo
+        } else {
+            FadeTransition animation = animation(toolbar, false);
+            if (drawMode) {
+                animation.setOnFinished(it -> animation(subToolbar, false).play());
+            } else {
+                animation.setOnFinished(it -> animation(subToolbar, true).play());
+            }
+            animation.play();
+        }
+    }
+
+    private FadeTransition animation(HBox toolbar, boolean isHide) {
+        FadeTransition subFade = new FadeTransition(Duration.millis(150), toolbar);
+        if (isHide) {
+            if (toolbar.isVisible()) {
+                subFade.setFromValue(toolbar.getOpacity());
+                subFade.setToValue(0.0);
+                subFade.setOnFinished(it -> {
+                    toolbar.setVisible(false);
+                    toolbar.setMouseTransparent(true);
+                });
+            }
+        } else {
+            toolbar.setVisible(true);
+            toolbar.setMouseTransparent(false);
+
+            subFade.setFromValue(toolbar.getOpacity());
+            subFade.setToValue(1.0);
+        }
+        return subFade;
     }
 
     public FloatingToolbar(Rectangle selectionArea, Pane parentContainer, DrawCanvas drawCanvasArea, ScreenshotSelector screenshotSelector) {
