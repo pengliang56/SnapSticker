@@ -100,7 +100,7 @@ public class ScreenshotSelector {
      */
     public void startSelection() {
         // Reset selection state
-        isSelecting = true;
+        isSelecting = false;  // 初始状态设为false，等待实际开始选择
 
         // Get current screen and mouse position
         currentScreen = screenManager.getCurrentScreen();
@@ -114,7 +114,7 @@ public class ScreenshotSelector {
 
         // Create and configure the stage
         Scene scene = initSceneAndSelectorStage();
-        // traverseAndDebugBorders(scene.getRoot());
+        
         // Initialize mask layers
         initializeMaskLayers();
 
@@ -122,7 +122,13 @@ public class ScreenshotSelector {
         setupMouseHandlers(scene);
         setupKeyboardHandlers(scene);
 
+        // Initialize mouse tracking and show magnifier
         initializeMouseTracking();
+        
+        // Get initial mouse position and show magnifier
+        Point mousePos = MouseInfo.getPointerInfo().getLocation();
+        magnifier.setVisible(true);
+        magnifier.update((int)mousePos.getX(), (int)mousePos.getY());
     }
 
     private void initRootPane() {
@@ -130,7 +136,6 @@ public class ScreenshotSelector {
         root.setCache(true);
         root.setCacheHint(CacheHint.SPEED);
         root.setStyle("-fx-background-color: transparent;");
-        root.getChildren().add(magnifier);
     }
 
     private Scene initSceneAndSelectorStage() {
@@ -159,26 +164,6 @@ public class ScreenshotSelector {
         return scene;
     }
 
-    /**
-     * Update the mask based on current mouse position
-     */
-/*    private void updateMaskBasedOnMousePosition() {
-        Point mousePosition = MouseInfo.getPointerInfo().getLocation();
-        double mouseX = mousePosition.getX();
-        double mouseY = mousePosition.getY();
-
-        // Check if mouse has moved to a different screen
-        Screen newScreen = screenManager.getCurrentScreen();
-        if (newScreen != currentScreen) {
-            // Mouse has moved to a different screen, reinitialize the selector
-            cleanup();
-            startSelection();
-            return;
-        }
-        System.out.println("updateMaskBasedOnMousePosition mouseX: " + mouseX);
-        // Update mask based on mouse position
-        updateScreenMask();
-    }*/
     public void stopMouseTracking() {
         if (mouseTracker != null) {
             mouseTracker.stop();
@@ -216,30 +201,6 @@ public class ScreenshotSelector {
     }
 
     /**
-     * Clean up resources before reinitializing
-     */
-    public void cleanup() {
-        stopMouseTracking();
-        if (selectorStage != null) {
-            selectorStage.close();
-            selectorStage = null;
-        }
-        if (root != null) {
-            root.getChildren().clear();
-            root = null;
-        }
-        selectionArea = null;
-        drawCanvasArea = null;
-        isSelecting = false;
-        isResizing = false;
-        maskTop = null;
-        maskBottom = null;
-        maskLeft = null;
-        maskRight = null;
-        resizeDirection = "";
-    }
-
-    /**
      * Initialize all mask layers for the screenshot selection
      */
     private void initializeMaskLayers() {
@@ -250,7 +211,7 @@ public class ScreenshotSelector {
         root.getChildren().addAll(
                 drawCanvasArea,
                 maskTop, maskBottom, maskLeft, maskRight,
-                selectionArea);
+                selectionArea, magnifier);
     }
 
     private void createSelectCalculatedMask() {
@@ -348,23 +309,28 @@ public class ScreenshotSelector {
      * @param scene The scene to attach the handlers to
      */
     private void setupMouseHandlers(Scene scene) {
-        scene.setOnMousePressed(event -> {
-            if (isSelecting) {
-                drawCanvasArea.setStyle(null);
-                stopMouseTracking();
-                startX = event.getScreenX();
-                startY = event.getScreenY();
+        scene.setOnMouseMoved(e -> {
+            if (selectionArea.getHeight() > 0 && selectionArea.getWidth() > 0) {
+                boolean isInside = isMouseInSelectionArea(e.getX(), e.getY());
+                magnifier.switchShowMagnifier(e, isInside);
+            } else {
+                magnifier.switchShowMagnifier(e, true);
             }
         });
 
-        root.setOnMouseMoved(e -> {
-            magnifier.setVisible(true);
-            magnifier.setLayoutX(e.getX());
-            magnifier.setLayoutY(e.getY());
-            magnifier.update((int) e.getX(), (int) e.getY());
+        scene.setOnMousePressed(event -> {
+            // 开始实际的选择操作
+            isSelecting = true;
+            drawCanvasArea.setStyle(null);
+            stopMouseTracking();
+            startX = event.getScreenX();
+            startY = event.getScreenY();
         });
 
         scene.setOnMouseDragged(event -> {
+            // 拖动过程中显示放大镜
+            magnifier.switchShowMagnifier(event, true);
+
             if (isSelecting) {
                 endX = event.getScreenX();
                 endY = event.getScreenY();
@@ -374,19 +340,32 @@ public class ScreenshotSelector {
 
         scene.setOnMouseReleased(event -> {
             if (isSelecting) {
-                isSelecting = false;
                 handleMouseReleased(event);
+                // 检查鼠标是否在选区内
+                boolean isInside = isMouseInSelectionArea(event.getX(), event.getY());
+                magnifier.switchShowMagnifier(event, isInside);
             }
         });
+    }
+
+    private boolean isMouseInSelectionArea(double mouseX, double mouseY) {
+        if (selectionArea == null) return false;
+        
+        double x = selectionArea.getX();
+        double y = selectionArea.getY();
+        double width = selectionArea.getWidth();
+        double height = selectionArea.getHeight();
+        
+        return mouseX >= x && mouseX <= (x + width) &&
+               mouseY >= y && mouseY <= (y + height);
     }
 
     private void handleMouseReleased(javafx.scene.input.MouseEvent event) {
         endX = event.getScreenX();
         endY = event.getScreenY();
-        isSelecting = false;
+        isSelecting = false;  // 选择完成，重置状态
 
         updateSelectionAreaPosition();
-
         setupDragHandlers();
 
         if (floatingToolbar != null) {
@@ -526,6 +505,7 @@ public class ScreenshotSelector {
         });
 
         selectionArea.setOnMousePressed(e -> {
+            magnifier.switchShowMagnifier(e, false);
             dragDelta[0] = e.getSceneX() - selectionArea.getX();
             dragDelta[1] = e.getSceneY() - selectionArea.getY();
             e.consume();
@@ -537,6 +517,7 @@ public class ScreenshotSelector {
         });
 
         selectionArea.setOnMouseReleased(e -> {
+            magnifier.switchShowMagnifier(e, true);
             isResizing = false;
             resizeDirection = "";
         });
@@ -904,6 +885,29 @@ public class ScreenshotSelector {
         return createDirectionalCursor(Icon.point);
     }
 
+    /**
+     * Clean up resources before reinitializing
+     */
+    public void cleanup() {
+        stopMouseTracking();
+        if (selectorStage != null) {
+            selectorStage.close();
+            selectorStage = null;
+        }
+        if (root != null) {
+            root.getChildren().clear();
+            root = null;
+        }
+        selectionArea = null;
+        drawCanvasArea = null;
+        isSelecting = false;
+        isResizing = false;
+        maskTop = null;
+        maskBottom = null;
+        maskLeft = null;
+        maskRight = null;
+        resizeDirection = "";
+    }
 
     private static final ImageCursor CURSOR_N = createDirectionalCursor(Icon.arrowUp);
     private static final ImageCursor CURSOR_S = createDirectionalCursor(Icon.arrowDown);

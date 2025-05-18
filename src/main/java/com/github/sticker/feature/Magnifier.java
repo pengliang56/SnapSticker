@@ -12,6 +12,7 @@ import javafx.scene.image.PixelWriter;
 import javafx.scene.image.WritableImage;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
@@ -78,27 +79,6 @@ public class Magnifier extends VBox {
         setupKeyboardHandlers();
         getStyleClass().add("magnifier");
         startUpdateLoop();
-
-        // Add listener to ensure always on top when scene is available
-        sceneProperty().addListener((obs, oldScene, newScene) -> {
-            if (newScene != null) {
-                newScene.windowProperty().addListener((obs2, oldWindow, newWindow) -> {
-                    if (newWindow != null) {
-                        javafx.stage.Window window = newScene.getWindow();
-                        if (window instanceof javafx.stage.Stage) {
-                            javafx.stage.Stage stage = (javafx.stage.Stage) window;
-                            stage.setAlwaysOnTop(true);
-                            // Ensure window stays focused and on top
-                            stage.focusedProperty().addListener((obs3, oldFocused, newFocused) -> {
-                                if (!newFocused) {
-                                    stage.toFront();
-                                }
-                            });
-                        }
-                    }
-                });
-            }
-        });
     }
 
     private void setupUI() {
@@ -260,28 +240,28 @@ public class Magnifier extends VBox {
     public void update(int screenX, int screenY) {
         // Get screen bounds
         javafx.geometry.Rectangle2D screenBounds = javafx.stage.Screen.getPrimary().getVisualBounds();
-        
+
         // Calculate total height including info panel
         double totalHeight = MAG_HEIGHT + getHeight() - magnifierCanvas.getHeight();
-        
+
         // Calculate positions with bounds checking
         double posX = screenX + OFFSET_X;
         double posY = screenY + OFFSET_Y;
-        
+
         // Adjust X position if too close to right edge
         if (posX + MAG_WIDTH > screenBounds.getMaxX()) {
             posX = screenX - OFFSET_X - MAG_WIDTH;
         }
-        
+
         // Adjust Y position if too close to bottom edge
         if (posY + totalHeight > screenBounds.getMaxY()) {
             posY = screenY - OFFSET_Y - totalHeight;
         }
-        
+
         // Ensure magnifier stays within screen bounds
         posX = Math.max(screenBounds.getMinX(), Math.min(posX, screenBounds.getMaxX() - MAG_WIDTH));
         posY = Math.max(screenBounds.getMinY(), Math.min(posY, screenBounds.getMaxY() - totalHeight));
-        
+
         // Update magnifier position
         setLayoutX(posX);
         setLayoutY(posY);
@@ -292,7 +272,7 @@ public class Magnifier extends VBox {
             stage.setAlwaysOnTop(true);
             stage.toFront();
         }
-        
+
         currentX = screenX;
         currentY = screenY;
         updatePending.set(true);
@@ -404,5 +384,14 @@ public class Magnifier extends VBox {
         coordLabel.setText(String.format("( %d , %d )", x, y));
         updateColorLabel(color);
         colorPreview.setFill(color);
+    }
+
+    public void switchShowMagnifier(MouseEvent event, boolean show) {
+        this.setVisible(show);
+        if (show) {
+            this.setLayoutX(event.getX());
+            this.setLayoutY(event.getY());
+            this.update((int) event.getX(), (int) event.getY());
+        }
     }
 }
