@@ -3,6 +3,7 @@ package com.github.sticker.screenshot;
 import com.github.sticker.draw.DrawCanvas;
 import com.github.sticker.draw.FloatingToolbar;
 import com.github.sticker.draw.Icon;
+import com.github.sticker.feature.Magnifier;
 import com.github.sticker.util.ScreenManager;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
@@ -43,12 +44,15 @@ public class ScreenshotSelector {
     private boolean isSelecting = false;
 
     // Mask layers
-//    private Rectangle fullscreenMask;        // Base semi-transparent mask
     private Rectangle maskTop, maskBottom, maskLeft, maskRight;
-    private Rectangle selectionArea;   // Selection area mask
-    //    private Rectangle selectionBorder; // Visual border for selection area
+    private Rectangle selectionArea;
+
+    // ---------------------
     private DrawCanvas drawCanvasArea; // Visual border for selection area
     private static final double MASK_OPACITY = 0.5;
+
+    // feature
+    private final Magnifier magnifier;
 
     // Mouse tracking
     private Timeline mouseTracker;
@@ -82,6 +86,11 @@ public class ScreenshotSelector {
      * @param screenManager The screen manager instance to handle screen-related operations
      */
     public ScreenshotSelector(ScreenManager screenManager) {
+        try {
+            this.magnifier = new Magnifier();
+        } catch (AWTException e) {
+            throw new RuntimeException(e);
+        }
         this.screenManager = screenManager;
     }
 
@@ -121,6 +130,7 @@ public class ScreenshotSelector {
         root.setCache(true);
         root.setCacheHint(CacheHint.SPEED);
         root.setStyle("-fx-background-color: transparent;");
+        root.getChildren().add(magnifier);
     }
 
     private Scene initSceneAndSelectorStage() {
@@ -345,6 +355,13 @@ public class ScreenshotSelector {
                 startX = event.getScreenX();
                 startY = event.getScreenY();
             }
+        });
+
+        root.setOnMouseMoved(e -> {
+            magnifier.setVisible(true);
+            magnifier.setLayoutX(e.getX());
+            magnifier.setLayoutY(e.getY());
+            magnifier.update((int) e.getX(), (int) e.getY());
         });
 
         scene.setOnMouseDragged(event -> {
