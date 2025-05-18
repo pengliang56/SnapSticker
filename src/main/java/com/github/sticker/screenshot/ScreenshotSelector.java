@@ -914,6 +914,7 @@ public class ScreenshotSelector {
      */
     public void cleanup() {
         stopMouseTracking();
+        magnifier.setVisible(false);
         if (selectorStage != null) {
             selectorStage.close();
             selectorStage = null;

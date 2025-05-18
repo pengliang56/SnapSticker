@@ -19,11 +19,7 @@ public class HookKeyListener implements NativeKeyListener {
         if (e.getKeyCode() == NativeKeyEvent.VC_F1) {
             Platform.runLater(this::takeScreenshot);
         } else if (e.getKeyCode() == NativeKeyEvent.VC_ESCAPE) {
-            Platform.runLater(() -> {
-                if (screenshotSelector.isSelecting()) {
-                    screenshotSelector.cancelSelection();
-                }
-            });
+            Platform.runLater(screenshotSelector::cancelSelection);
         }
     }
 
