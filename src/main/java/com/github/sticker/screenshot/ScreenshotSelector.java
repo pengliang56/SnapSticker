@@ -5,6 +5,7 @@ import com.github.sticker.draw.FloatingToolbar;
 import com.github.sticker.draw.Icon;
 import com.github.sticker.feature.Magnifier;
 import com.github.sticker.util.ScreenManager;
+import com.github.sticker.util.StealthWindow;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.beans.value.ChangeListener;
@@ -147,9 +148,10 @@ public class ScreenshotSelector {
         // Position the stage on the screen
         selectorStage.setX(currentScreenBounds.getMinX());
         selectorStage.setY(currentScreenBounds.getMinY());
-        selectorStage.setScene(scene);
 
-        // Show the stage and start tracking
+        StealthWindow.configure(selectorStage);
+
+        selectorStage.setScene(scene);
         selectorStage.show();
         return scene;
     }

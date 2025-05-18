@@ -1,4 +1,5 @@
 module com.github.sticker {
+    opens com.github.sticker.screenshot to javafx.graphics, com.sun.jna;
     requires com.github.kwhat.jnativehook;
     requires com.sun.jna.platform;
     requires java.datatransfer;
