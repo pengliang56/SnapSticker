@@ -901,6 +901,10 @@ public class ScreenshotSelector {
         return selectionArea;
     }
 
+    public Magnifier getMagnifier() {
+        return magnifier;
+    }
+
     private static ImageCursor createCustomCursor() {
         return createDirectionalCursor(Icon.point);
     }

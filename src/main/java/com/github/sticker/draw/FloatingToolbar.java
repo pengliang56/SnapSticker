@@ -552,5 +552,7 @@ public class FloatingToolbar {
         initializeToolbar();
         createSubToolbar();
         parentContainer.getChildren().add(toolbar);
+        parentContainer.getChildren().remove(screenshotSelector.getMagnifier());
+        parentContainer.getChildren().add(screenshotSelector.getMagnifier());
     }
 }
