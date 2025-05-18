@@ -144,6 +144,7 @@ public class ScreenshotSelector {
         selectorStage = new Stage();
         selectorStage.initStyle(StageStyle.TRANSPARENT);
         selectorStage.setAlwaysOnTop(true);
+        selectorStage.setTitle("SnapSticker");
 
         // Position the stage on the screen
         selectorStage.setX(currentScreenBounds.getMinX());
