@@ -252,7 +252,6 @@ public class FloatingToolbar {
         }
         currentMode = switchMode(currentMode, selectMode);
         activeButton = handleButton;
-        System.out.println("selectionMode: " + currentMode + " selectMode: " + selectMode);
     }
 
     private void createSubToolbar() {
