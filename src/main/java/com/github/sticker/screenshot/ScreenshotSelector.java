@@ -114,7 +114,7 @@ public class ScreenshotSelector {
 
         // Create and configure the stage
         Scene scene = initSceneAndSelectorStage();
-        
+
         // Initialize mask layers
         initializeMaskLayers();
 
@@ -124,11 +124,11 @@ public class ScreenshotSelector {
 
         // Initialize mouse tracking and show magnifier
         initializeMouseTracking();
-        
+
         // Get initial mouse position and show magnifier
         Point mousePos = MouseInfo.getPointerInfo().getLocation();
         magnifier.setVisible(true);
-        magnifier.update((int)mousePos.getX(), (int)mousePos.getY());
+        magnifier.update((int) mousePos.getX(), (int) mousePos.getY());
     }
 
     private void initRootPane() {
@@ -310,28 +310,33 @@ public class ScreenshotSelector {
      */
     private void setupMouseHandlers(Scene scene) {
         scene.setOnMouseMoved(e -> {
-            if (selectionArea.getHeight() > 0 && selectionArea.getWidth() > 0) {
-                boolean isInside = isMouseInSelectionArea(e.getX(), e.getY());
-                magnifier.switchShowMagnifier(e, isInside);
+            if (isSelecting) {
+                boolean drawMode = floatingToolbar != null && floatingToolbar.getDrawMode();
+                if (drawMode) {
+                    magnifier.switchShowMagnifier(e, false);
+                } else {
+                    boolean isInside = isMouseInSelectionArea(e.getX(), e.getY());
+                    magnifier.switchShowMagnifier(e, isInside);
+                }
             } else {
                 magnifier.switchShowMagnifier(e, true);
             }
         });
 
         scene.setOnMousePressed(event -> {
-            // 开始实际的选择操作
-            isSelecting = true;
-            drawCanvasArea.setStyle(null);
-            stopMouseTracking();
-            startX = event.getScreenX();
-            startY = event.getScreenY();
+            magnifier.switchShowMagnifier(event, !(floatingToolbar != null && floatingToolbar.getDrawMode()));
+            if (!isSelecting) {
+                drawCanvasArea.setStyle(null);
+                stopMouseTracking();
+
+                startX = event.getScreenX();
+                startY = event.getScreenY();
+            }
         });
 
         scene.setOnMouseDragged(event -> {
-            // 拖动过程中显示放大镜
-            magnifier.switchShowMagnifier(event, true);
-
-            if (isSelecting) {
+            magnifier.switchShowMagnifier(event, !(floatingToolbar != null && floatingToolbar.getDrawMode()));
+            if (!isSelecting) {
                 endX = event.getScreenX();
                 endY = event.getScreenY();
                 realTimeSelection();
@@ -339,25 +344,26 @@ public class ScreenshotSelector {
         });
 
         scene.setOnMouseReleased(event -> {
-            if (isSelecting) {
+            if (!isSelecting) {
                 handleMouseReleased(event);
                 // 检查鼠标是否在选区内
                 boolean isInside = isMouseInSelectionArea(event.getX(), event.getY());
                 magnifier.switchShowMagnifier(event, isInside);
+                isSelecting = true;
             }
         });
     }
 
     private boolean isMouseInSelectionArea(double mouseX, double mouseY) {
         if (selectionArea == null) return false;
-        
+
         double x = selectionArea.getX();
         double y = selectionArea.getY();
         double width = selectionArea.getWidth();
         double height = selectionArea.getHeight();
-        
+
         return mouseX >= x && mouseX <= (x + width) &&
-               mouseY >= y && mouseY <= (y + height);
+                mouseY >= y && mouseY <= (y + height);
     }
 
     private void handleMouseReleased(javafx.scene.input.MouseEvent event) {
@@ -401,6 +407,10 @@ public class ScreenshotSelector {
      */
     public void setupDragHandlers() {
         final double[] dragDelta = new double[2];
+
+        // Clear existing drag areas first
+        root.getChildren().removeAll(dragAreas);
+        dragAreas.clear();
 
         Rectangle topArea = new Rectangle();
         Rectangle bottomArea = new Rectangle();
@@ -476,11 +486,26 @@ public class ScreenshotSelector {
             bottomRightArea.setHeight(screenHeight - (y + height));
         };
 
-        ChangeListener<Number> positionListener =
-                (obs, oldVal, newVal)
-                        -> updateAreas.accept(selectionArea);
+        // Remove any existing listeners
+        for (ChangeListener<Number> listener : borderListeners) {
+            selectionArea.xProperty().removeListener(listener);
+            selectionArea.yProperty().removeListener(listener);
+            selectionArea.widthProperty().removeListener(listener);
+            selectionArea.heightProperty().removeListener(listener);
+        }
+        borderListeners.clear();
 
-        // 添加检测区域到场景
+        ChangeListener<Number> positionListener =
+                (obs, oldVal, newVal) -> updateAreas.accept(selectionArea);
+        borderListeners.add(positionListener);
+
+        // Add the listeners
+        selectionArea.xProperty().addListener(positionListener);
+        selectionArea.yProperty().addListener(positionListener);
+        selectionArea.widthProperty().addListener(positionListener);
+        selectionArea.heightProperty().addListener(positionListener);
+
+        // Add drag areas to scene if they're not already there
         root.getChildren().addAll(dragAreas);
 
         // 设置事件处理器
@@ -492,11 +517,6 @@ public class ScreenshotSelector {
         setupAreaEvents(topRightArea, "ne", CURSOR_NE, dragDelta);
         setupAreaEvents(bottomLeftArea, "sw", CURSOR_SW, dragDelta);
         setupAreaEvents(bottomRightArea, "se", CURSOR_SE, dragDelta);
-
-        selectionArea.xProperty().addListener(positionListener);
-        selectionArea.yProperty().addListener(positionListener);
-        selectionArea.widthProperty().addListener(positionListener);
-        selectionArea.heightProperty().addListener(positionListener);
 
         updateAreas.accept(selectionArea);
 

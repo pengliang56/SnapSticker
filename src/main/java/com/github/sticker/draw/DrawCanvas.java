@@ -96,6 +96,11 @@ public class DrawCanvas extends Pane {
     }
 
     void setupPenTool() {
+        // Clear any existing event handlers
+        this.setOnMousePressed(null);
+        this.setOnMouseDragged(null);
+        this.setOnMouseReleased(null);
+
         this.setOnMousePressed(e -> {
             points.clear();
             lastSampledPoint = new Point2D(e.getX(), e.getY());
@@ -104,7 +109,6 @@ public class DrawCanvas extends Pane {
             currentPath = new Path();
             if (strokeDashed) currentPath.getStrokeDashArray().setAll(5d, 10d);
 
-
             currentPath.setStroke(strokeColor);
             currentPath.setStrokeWidth(strokeWidth);
             currentPath.getElements().add(new MoveTo(e.getX(), e.getY()));
@@ -112,6 +116,22 @@ public class DrawCanvas extends Pane {
         });
 
         this.setOnMouseDragged(e -> {
+            if (currentPath == null) {
+                // If somehow we got a drag without a press, simulate the press
+                points.clear();
+                lastSampledPoint = new Point2D(e.getX(), e.getY());
+                points.add(lastSampledPoint);
+
+                currentPath = new Path();
+                if (strokeDashed) currentPath.getStrokeDashArray().setAll(5d, 10d);
+
+                currentPath.setStroke(strokeColor);
+                currentPath.setStrokeWidth(strokeWidth);
+                currentPath.getElements().add(new MoveTo(e.getX(), e.getY()));
+                getChildren().add(currentPath);
+                return;
+            }
+
             this.setCursor(Cursor.NONE);
             Point2D currentPoint = new Point2D(e.getX(), e.getY());
             if (currentPoint.distance(lastSampledPoint) >= SAMPLE_DISTANCE) {
@@ -130,12 +150,13 @@ public class DrawCanvas extends Pane {
                             )
                     );
                 } else if (points.size() == 2) {
-                    currentPath.getElements().add(new javafx.scene.shape.LineTo(currentPoint.getX(), currentPoint.getY()));
+                    currentPath.getElements().add(new LineTo(currentPoint.getX(), currentPoint.getY()));
                 }
             }
         });
+
         this.setOnMouseReleased(e -> {
-            if (points.size() >= 3) {
+            if (currentPath != null && points.size() >= 3) {
                 Point2D p1 = points.get(points.size() - 2);
                 Point2D p2 = points.get(points.size() - 1);
                 currentPath.getElements().add(
@@ -144,8 +165,8 @@ public class DrawCanvas extends Pane {
                                 p2.getX(), p2.getY()
                         )
                 );
+                saveState(currentPath);
             }
-            saveState(currentPath);
             currentPath = null;
             this.setCursor(createDirectionalCursor(point));
         });

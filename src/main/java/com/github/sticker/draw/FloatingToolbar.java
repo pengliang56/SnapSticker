@@ -40,7 +40,7 @@ public class FloatingToolbar {
     private DrawMode currentMode = DrawMode.NONE;
     private Button activeButton;
     private boolean switchDirection = false;
-
+    private boolean drawMode = false;
 
     // ----------------------------------------------------
     private final Rectangle selectionArea;
@@ -220,7 +220,7 @@ public class FloatingToolbar {
     }
 
     public void drawMode(Button handleButton, DrawMode selectMode) {
-        boolean drawMode = false;
+        drawMode = false;
         switch (selectMode) {
             case PEN, RECTANGLE, LINE -> {
                 if (currentMode != selectMode) {
@@ -239,6 +239,7 @@ public class FloatingToolbar {
         if (activeButton != null) {
             activeButton.getStyleClass().remove("active");
         }
+
         if (drawMode) {
             colorPicker.setValue(drawCanvas.getStrokeColor());
             sizeSlider.setValue(drawCanvas.getStrokeWidth());
@@ -251,6 +252,7 @@ public class FloatingToolbar {
         }
         currentMode = switchMode(currentMode, selectMode);
         activeButton = handleButton;
+        System.out.println("selectionMode: " + currentMode + " selectMode: " + selectMode);
     }
 
     private void createSubToolbar() {
@@ -525,17 +527,21 @@ public class FloatingToolbar {
                 subFade.setToValue(0.0);
                 subFade.setOnFinished(it -> {
                     toolbar.setVisible(false);
-                    toolbar.setMouseTransparent(true);
+                    toolbar.setMouseTransparent(true); // 启用穿透（不接收鼠标事件）
                 });
             }
         } else {
             toolbar.setVisible(true);
-            toolbar.setMouseTransparent(false);
+            toolbar.setMouseTransparent(false); // 禁用穿透（正常接收事件）
 
             subFade.setFromValue(toolbar.getOpacity());
             subFade.setToValue(1.0);
         }
         return subFade;
+    }
+
+    public boolean getDrawMode() {
+        return drawMode;
     }
 
     public FloatingToolbar(Rectangle selectionArea, Pane parentContainer, DrawCanvas drawCanvasArea, ScreenshotSelector screenshotSelector) {
