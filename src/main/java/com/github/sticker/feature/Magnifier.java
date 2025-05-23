@@ -28,8 +28,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Magnifier extends VBox {
-    private static final int MAG_HEIGHT = 120;
-    private static final int MAG_WIDTH = (int) (MAG_HEIGHT * 1.3);  // 1.3 times wider
+    // Reduce magnifier size for better performance
+    private static final int MAG_HEIGHT = 90;  // Reduced from 120 to 90
+    private static final int MAG_WIDTH = (int) (MAG_HEIGHT * 1.2);  // Slightly reduced aspect ratio
+
     private final Canvas magnifierCanvas;
     private final Label coordLabel;
     private final Label colorLabel;
@@ -46,8 +48,8 @@ public class Magnifier extends VBox {
     private boolean isLeftSide = true;
 
     // Optimize offset constants for better following
-    private static final int OFFSET_X = 20;
-    private static final int OFFSET_Y = 20;
+    private static final int OFFSET_X = 15;  // Reduced offset for smaller size
+    private static final int OFFSET_Y = 15;
 
     private static final Color CROSSHAIR_COLOR = Color.rgb(2, 183, 200, 0.8);
 
@@ -94,7 +96,7 @@ public class Magnifier extends VBox {
         
         coordLabel = new Label();
         colorLabel = new Label();
-        colorPreview = new Rectangle(12, 12);
+        colorPreview = new Rectangle(10, 10);
 
         // Initialize buffers
         outputBuffer = new WritableImage(MAG_WIDTH, MAG_HEIGHT);
@@ -117,12 +119,15 @@ public class Magnifier extends VBox {
         // Remove all styling from canvas
         magnifierCanvas.setStyle(null);
 
-        // Style color preview
+        // Style color preview with smaller size
         colorPreview.setStroke(Color.WHITE);
+        colorPreview.setWidth(10);  // Reduced from 12
+        colorPreview.setHeight(10); // Reduced from 12
 
-        // Style labels with white text and center alignment
-        coordLabel.setStyle("-fx-text-fill: white; -fx-font-size: 15; -fx-alignment: center; -fx-padding: 0;");
-        colorLabel.setStyle("-fx-text-fill: white; -fx-font-size: 15; -fx-alignment: center; -fx-padding: 0;");
+        // Style labels with smaller font
+        String labelStyle = "-fx-text-fill: white; -fx-font-size: 13; -fx-alignment: center; -fx-padding: 0;";
+        coordLabel.setStyle(labelStyle);
+        colorLabel.setStyle(labelStyle);
         coordLabel.setAlignment(Pos.CENTER);
         colorLabel.setAlignment(Pos.CENTER);
 
@@ -135,10 +140,10 @@ public class Magnifier extends VBox {
         Label restLabel2 = new Label(" to switch");
         Label restLabel3 = new Label("between RGB/HEX");
 
-        // Style for normal text
-        String normalStyle = "-fx-text-fill: rgba(255,255,255,0.6); -fx-font-size: 15; -fx-alignment: center; -fx-padding: 0;";
-        // Style for highlighted keys
-        String keyStyle = "-fx-text-fill: rgba(255,255,255,0.9); -fx-font-size: 15; -fx-font-weight: bold; -fx-alignment: center; -fx-padding: 0;";
+        // Style for normal text - smaller font
+        String normalStyle = "-fx-text-fill: rgba(255,255,255,0.6); -fx-font-size: 13; -fx-alignment: center; -fx-padding: 0;";
+        // Style for highlighted keys - smaller font
+        String keyStyle = "-fx-text-fill: rgba(255,255,255,0.9); -fx-font-size: 13; -fx-font-weight: bold; -fx-alignment: center; -fx-padding: 0;";
 
         pressLabel1.setStyle(normalStyle);
         keyLabel1.setStyle(keyStyle);
@@ -148,7 +153,7 @@ public class Magnifier extends VBox {
         restLabel2.setStyle(normalStyle);
         restLabel3.setStyle(normalStyle);
 
-        // Create hint boxes
+        // Create hint boxes with reduced spacing
         HBox hint1 = new HBox(0);
         hint1.setAlignment(Pos.CENTER);
         hint1.getChildren().addAll(pressLabel1, keyLabel1, restLabel1);
@@ -161,22 +166,22 @@ public class Magnifier extends VBox {
         hint3.setAlignment(Pos.CENTER);
         hint3.getChildren().add(restLabel3);
 
-        // Create hints container
+        // Create hints container with reduced spacing
         VBox hintsBox = new VBox(1);
         hintsBox.getChildren().addAll(hint1, hint2, hint3);
         hintsBox.setAlignment(Pos.CENTER);
-        hintsBox.setStyle("-fx-background-color: transparent; -fx-padding: 2 4 4 4; -fx-border-width: 0;");
+        hintsBox.setStyle("-fx-background-color: transparent; -fx-padding: 1 3 3 3; -fx-border-width: 0;");
 
         // Create info panel with semi-transparent black background
-        HBox colorBox = new HBox(5);
+        HBox colorBox = new HBox(4);  // Reduced spacing
         colorBox.getChildren().addAll(colorPreview, colorLabel);
         colorBox.setAlignment(Pos.CENTER);
-        colorBox.setStyle("-fx-background-color: transparent; -fx-padding: 4; -fx-border-width: 0;");
+        colorBox.setStyle("-fx-background-color: transparent; -fx-padding: 3; -fx-border-width: 0;");
 
-        VBox infoPanel = new VBox(2);  // Reduced spacing
+        VBox infoPanel = new VBox(1);  // Reduced spacing
         infoPanel.getChildren().addAll(coordLabel, colorBox, hintsBox);
         infoPanel.setAlignment(Pos.CENTER);
-        infoPanel.setStyle("-fx-background-color: rgba(0, 0, 0, 0.8); -fx-padding: 4; -fx-border-width: 0; -fx-background-insets: 0;");
+        infoPanel.setStyle("-fx-background-color: rgba(0, 0, 0, 0.8); -fx-padding: 3; -fx-border-width: 0; -fx-background-insets: 0;");
 
         // Remove all margins and make full width
         infoPanel.setMaxWidth(Double.MAX_VALUE);
@@ -190,7 +195,7 @@ public class Magnifier extends VBox {
         HBox.setMargin(colorLabel, null);
 
         // Add negative margin to move info panel up
-        VBox.setMargin(infoPanel, new Insets(-5, 0, 0, 0));
+        VBox.setMargin(infoPanel, new Insets(-4, 0, 0, 0));
 
         // Main container styling - remove ALL spacing
         setSpacing(0);
