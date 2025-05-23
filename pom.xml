@@ -168,8 +168,14 @@
                 </executions>
                 <configuration>
                     <headerType>gui</headerType>
+                    <dontWrapJar>false</dontWrapJar>
                     <outfile>${project.build.directory}/${project.name}.exe</outfile>
                     <jar>${project.build.directory}/${project.artifactId}-${project.version}.jar</jar>
+                    <errTitle>${project.name}</errTitle>
+                    <downloadUrl>https://adoptium.net/</downloadUrl>
+                    <priority>normal</priority>
+                    <stayAlive>true</stayAlive>
+                    <restartOnCrash>false</restartOnCrash>
                     <icon>src/main/resources/icon.ico</icon>
                     <jre>
                         <path>%JAVA_HOME%</path>
@@ -202,14 +208,25 @@
                     <versionInfo>
                         <fileVersion>1.0.0.0</fileVersion>
                         <txtFileVersion>${project.version}</txtFileVersion>
-                        <fileDescription>${project.description}</fileDescription>
+                        <fileDescription>SnapSticker - Screenshot Tool</fileDescription>
                         <copyright>MIT License</copyright>
                         <productVersion>1.0.0.0</productVersion>
                         <txtProductVersion>${project.version}</txtProductVersion>
                         <productName>${project.name}</productName>
+                        <companyName>com.github.mo</companyName>
                         <internalName>${project.name}</internalName>
                         <originalFilename>${project.name}.exe</originalFilename>
                     </versionInfo>
+                    <messages>
+                        <startupErr>Application startup failed</startupErr>
+                        <bundledJreErr>Java Runtime Environment not found</bundledJreErr>
+                        <jreVersionErr>Java 17 or higher is required</jreVersionErr>
+                        <launcherErr>Application launch error</launcherErr>
+                    </messages>
+                    <singleInstance>
+                        <mutexName>${project.name}</mutexName>
+                        <windowTitle>${project.name}</windowTitle>
+                    </singleInstance>
                 </configuration>
             </plugin>
         </plugins>
