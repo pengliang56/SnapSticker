@@ -1,14 +1,14 @@
 module com.github.sticker {
-    opens com.github.sticker.screenshot to javafx.graphics, com.sun.jna;
     requires com.github.kwhat.jnativehook;
     requires com.sun.jna.platform;
+    requires com.sun.jna;
     requires java.datatransfer;
     requires java.desktop;
     requires javafx.base;
     requires javafx.controls;
     requires javafx.graphics;
     requires javafx.swing;
-    requires com.sun.jna;
 
+    opens com.github.sticker to javafx.graphics, com.sun.jna;
     exports com.github.sticker;
 }

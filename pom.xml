@@ -91,6 +91,18 @@
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.3.0</version>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <mainClass>${main.class}</mainClass>
+                        </manifest>
+                    </archive>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.10.1</version>
                 <configuration>
@@ -136,7 +148,7 @@
                         <configuration>
                             <outputDirectory>${project.build.directory}/lib</outputDirectory>
                             <includeScope>runtime</includeScope>
-                            <includeArtifactIds>javafx-*,jna,jna-platform,jnativehook</includeArtifactIds>
+                            <includeGroupIds>org.openjfx,com.github.kwhat,net.java.dev.jna</includeGroupIds>
                         </configuration>
                     </execution>
                 </executions>
@@ -145,29 +157,59 @@
                 <groupId>com.akathist.maven.plugins.launch4j</groupId>
                 <artifactId>launch4j-maven-plugin</artifactId>
                 <version>2.1.1</version>
+                <executions>
+                    <execution>
+                        <id>create-exe</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>launch4j</goal>
+                        </goals>
+                    </execution>
+                </executions>
                 <configuration>
                     <headerType>gui</headerType>
                     <outfile>${project.build.directory}/${project.name}.exe</outfile>
-                    <jar>${project.build.directory}/${project.name}.jar</jar>
+                    <jar>${project.build.directory}/${project.artifactId}-${project.version}.jar</jar>
                     <icon>src/main/resources/icon.ico</icon>
                     <jre>
+                        <path>%JAVA_HOME%</path>
                         <minVersion>17</minVersion>
                         <maxVersion>17.0.99</maxVersion>
                         <runtimeBits>64</runtimeBits>
-                        <jdkPreference>preferJdk</jdkPreference>
-                        <path>${env.JAVA_HOME}</path>
+                        <jdkPreference>jdkOnly</jdkPreference>
+                        <initialHeapSize>128</initialHeapSize>
+                        <maxHeapSize>512</maxHeapSize>
                         <opts>
-                            <opt>--module-path</opt>
-                            <opt>"${project.build.directory}/lib;${env.JAVA_HOME}/jmods"</opt>
+                            <opt>--module-path "%JAVA_HOME%/jmods;./lib"</opt>
                             <opt>--add-modules</opt>
-                            <opt>com.github.sticker</opt>
-                            <opt>-Djava.library.path=lib</opt>
-                            <opt>-Djavafx.verbose=true</opt>
+                            <opt>javafx.controls,javafx.graphics,javafx.swing,javafx.fxml</opt>
+                            <opt>--add-exports</opt>
+                            <opt>javafx.graphics/com.sun.glass.ui=ALL-UNNAMED</opt>
+                            <opt>--add-exports</opt>
+                            <opt>javafx.graphics/com.sun.javafx.stage=ALL-UNNAMED</opt>
+                            <opt>--add-exports</opt>
+                            <opt>javafx.graphics/com.sun.javafx.tk=ALL-UNNAMED</opt>
+                            <opt>-Djava.library.path=./lib</opt>
+                            <opt>--add-opens</opt>
+                            <opt>javafx.graphics/com.sun.glass.ui=ALL-UNNAMED</opt>
                         </opts>
                     </jre>
                     <classPath>
-                        <mainClass>com.github.sticker/$｛main.class｝</mainClass>
+                        <mainClass>${main.class}</mainClass>
+                        <addDependencies>true</addDependencies>
+                        <jarLocation>lib/</jarLocation>
                     </classPath>
+                    <versionInfo>
+                        <fileVersion>1.0.0.0</fileVersion>
+                        <txtFileVersion>${project.version}</txtFileVersion>
+                        <fileDescription>${project.description}</fileDescription>
+                        <copyright>MIT License</copyright>
+                        <productVersion>1.0.0.0</productVersion>
+                        <txtProductVersion>${project.version}</txtProductVersion>
+                        <productName>${project.name}</productName>
+                        <internalName>${project.name}</internalName>
+                        <originalFilename>${project.name}.exe</originalFilename>
+                    </versionInfo>
                 </configuration>
             </plugin>
         </plugins>
