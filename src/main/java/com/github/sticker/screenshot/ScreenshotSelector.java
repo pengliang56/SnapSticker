@@ -25,8 +25,12 @@ import javafx.util.Duration;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Consumer;
 
 import static com.github.sticker.draw.Icon.createDirectionalCursor;
@@ -44,6 +48,10 @@ public class ScreenshotSelector {
     private double endX, endY;
     private boolean isSelecting = false;
 
+    // Add stage cache for multiple screens
+    private final Map<Screen, Stage> screenStages = new HashMap<>();
+    private Screen startScreen; // Track which screen the selection started on
+
     // Mask layers
     private Rectangle maskTop, maskBottom, maskLeft, maskRight;
     private Rectangle selectionArea;
@@ -58,6 +66,7 @@ public class ScreenshotSelector {
     // Mouse tracking
     private Timeline mouseTracker;
     private static final Duration TRACK_INTERVAL = Duration.millis(16); // ~60fps
+    private final ScheduledExecutorService updateExecutor;
 
     // Custom cursor
     private static final ImageCursor customCursor = createCustomCursor();
@@ -93,6 +102,41 @@ public class ScreenshotSelector {
             throw new RuntimeException(e);
         }
         this.screenManager = screenManager;
+        initializeScreenStages();
+        this.updateExecutor = Executors.newScheduledThreadPool(1);
+    }
+
+    /**
+     * Initialize stages for all available screens
+     */
+    private void initializeScreenStages() {
+        for (Screen screen : Screen.getScreens()) {
+            Stage stage = new Stage();
+            stage.initStyle(StageStyle.TRANSPARENT);
+            stage.setAlwaysOnTop(true);
+            stage.setTitle("SnapSticker");
+
+            Rectangle2D bounds = screen.getBounds();
+            stage.setX(bounds.getMinX());
+            stage.setY(bounds.getMinY());
+
+            Pane root = new Pane();
+            root.setCache(true);
+            root.setCacheHint(CacheHint.SPEED);
+            root.setStyle("-fx-background-color: transparent;");
+
+            Scene scene = new Scene(root, bounds.getWidth(), bounds.getHeight());
+            scene.setFill(Color.rgb(0, 0, 0, 0.01));
+            scene.setCursor(createDirectionalCursor(Icon.point));
+            scene.getStylesheets().add(
+                    Objects.requireNonNull(getClass().getResource("/styles/index.css")).toExternalForm()
+            );
+
+            stage.setScene(scene);
+            StealthWindow.configure(stage);
+            
+            screenStages.put(screen, stage);
+        }
     }
 
     /**
@@ -101,20 +145,26 @@ public class ScreenshotSelector {
      */
     public void startSelection() {
         // Reset selection state
-        isSelecting = false;  // 初始状态设为false，等待实际开始选择
+        isSelecting = false;
 
         // Get current screen and mouse position
         currentScreen = screenManager.getCurrentScreen();
+        startScreen = currentScreen; // Remember which screen we started on
         currentScreenBounds = currentScreen.getBounds();
+
+        // Clear any existing selections on all screens
+        clearOtherScreenSelections(currentScreen);
 
         // Check taskbar status
         isTaskbarVisible = screenManager.isTaskbarVisible();
         taskbarBounds = screenManager.getTaskbarBounds();
 
-        initRootPane();
-
-        // Create and configure the stage
-        Scene scene = initSceneAndSelectorStage();
+        // Get the cached stage for current screen
+        selectorStage = screenStages.get(currentScreen);
+        Scene scene = selectorStage.getScene();
+        scene.setCursor(createDirectionalCursor(Icon.point));
+        root = (Pane) scene.getRoot();
+        root.getChildren().clear();
 
         // Initialize mask layers
         initializeMaskLayers();
@@ -126,45 +176,13 @@ public class ScreenshotSelector {
         // Initialize mouse tracking and show magnifier
         initializeMouseTracking();
 
+        // Show the stage for current screen
+        selectorStage.show();
+
         // Get initial mouse position and show magnifier
         Point mousePos = MouseInfo.getPointerInfo().getLocation();
         magnifier.setVisible(true);
         magnifier.update((int) mousePos.getX(), (int) mousePos.getY());
-    }
-
-    private void initRootPane() {
-        root = new Pane();
-        root.setCache(true);
-        root.setCacheHint(CacheHint.SPEED);
-        root.setStyle("-fx-background-color: transparent;");
-    }
-
-    private Scene initSceneAndSelectorStage() {
-        Scene scene = initScene();
-        selectorStage = new Stage();
-        selectorStage.initStyle(StageStyle.TRANSPARENT);
-        selectorStage.setAlwaysOnTop(true);
-        selectorStage.setTitle("SnapSticker");
-
-        // Position the stage on the screen
-        selectorStage.setX(currentScreenBounds.getMinX());
-        selectorStage.setY(currentScreenBounds.getMinY());
-
-        StealthWindow.configure(selectorStage);
-
-        selectorStage.setScene(scene);
-        selectorStage.show();
-        return scene;
-    }
-
-    private Scene initScene() {
-        Scene scene = new Scene(root, currentScreenBounds.getWidth(), currentScreenBounds.getHeight());
-        scene.setFill(Color.rgb(0, 0, 0, 0.01));
-        scene.setCursor(customCursor);
-        scene.getStylesheets().add(
-                Objects.requireNonNull(getClass().getResource("/styles/index.css")).toExternalForm()
-        );
-        return scene;
     }
 
     public void stopMouseTracking() {
@@ -384,6 +402,9 @@ public class ScreenshotSelector {
         });
 
         scene.setOnMousePressed(event -> {
+            // Clear any existing selection on other screens
+            clearOtherScreenSelections(currentScreen);
+            
             magnifier.switchShowMagnifier(event, !(floatingToolbar != null && floatingToolbar.getDrawMode()));
             if (!isSelecting) {
                 drawCanvasArea.setStyle(null);
@@ -436,6 +457,15 @@ public class ScreenshotSelector {
     private void handleMouseReleased(javafx.scene.input.MouseEvent event) {
         endX = event.getScreenX();
         endY = event.getScreenY();
+        
+        // Check if we've moved to a different screen
+        Screen currentMouseScreen = screenManager.getCurrentScreen();
+        if (currentMouseScreen != startScreen) {
+            // Cancel selection if crossed screen boundaries
+            cancelSelection();
+            return;
+        }
+
         isSelecting = false;  // 选择完成，重置状态
 
         updateSelectionAreaPosition();
@@ -983,14 +1013,16 @@ public class ScreenshotSelector {
     public void cleanup() {
         stopMouseTracking();
         magnifier.setVisible(false);
-        if (selectorStage != null) {
-            selectorStage.close();
-            selectorStage = null;
+        
+        // Hide all stages instead of closing
+        for (Stage stage : screenStages.values()) {
+            stage.hide();
+            if (stage.getScene().getRoot() instanceof Pane pane) {
+                pane.getChildren().clear();
+            }
         }
-        if (root != null) {
-            root.getChildren().clear();
-            root = null;
-        }
+        
+        root = null;
         selectionArea = null;
         drawCanvasArea = null;
         isSelecting = false;
@@ -1002,6 +1034,21 @@ public class ScreenshotSelector {
         resizeDirection = "";
     }
 
+    /**
+     * Dispose of all resources when the application is closing
+     */
+    public void dispose() {
+        if (updateExecutor != null) {
+            updateExecutor.shutdown();
+        }
+        // Close and clear all cached stages
+        for (Stage stage : screenStages.values()) {
+            stage.close();
+        }
+        screenStages.clear();
+        magnifier.dispose();
+    }
+
     private static final ImageCursor CURSOR_N = createDirectionalCursor(Icon.arrowUp);
     private static final ImageCursor CURSOR_S = createDirectionalCursor(Icon.arrowDown);
     private static final ImageCursor CURSOR_E = createDirectionalCursor(Icon.arrowRight);
@@ -1011,4 +1058,50 @@ public class ScreenshotSelector {
     private static final ImageCursor CURSOR_SE = createDirectionalCursor(Icon.arrowDownRight);
     private static final ImageCursor CURSOR_SW = createDirectionalCursor(Icon.arrowDownLeft);
     private static final ImageCursor CURSOR_MOVE = createDirectionalCursor(Icon.arrowsPointingOut);
+
+    /**
+     * Clear selection areas on all screens except the current one
+     * @param currentScreen The screen to exclude from clearing
+     */
+    private void clearOtherScreenSelections(Screen currentScreen) {
+        for (Map.Entry<Screen, Stage> entry : screenStages.entrySet()) {
+            if (entry.getKey() != currentScreen) {
+                Stage stage = entry.getValue();
+                Scene scene = stage.getScene();
+                if (scene != null && scene.getRoot() instanceof Pane pane) {
+                    // Clear all children except the base elements
+                    pane.getChildren().clear();
+                    
+                    // Reset any selection-related state for that screen
+                    if (stage == selectorStage) {
+                        selectionArea = null;
+                        drawCanvasArea = null;
+                        if (floatingToolbar != null) {
+                            floatingToolbar = null;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Clear selection on a specific screen
+     * @param screen The screen to clear selection from
+     */
+    private void clearScreenSelection(Screen screen) {
+        Stage stage = screenStages.get(screen);
+        if (stage != null && stage.getScene() != null && stage.getScene().getRoot() instanceof Pane pane) {
+            pane.getChildren().clear();
+            
+            // Reset selection state if this is the current selector stage
+            if (stage == selectorStage) {
+                selectionArea = null;
+                drawCanvasArea = null;
+                if (floatingToolbar != null) {
+                    floatingToolbar = null;
+                }
+            }
+        }
+    }
 } 
