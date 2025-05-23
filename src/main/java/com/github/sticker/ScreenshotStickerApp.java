@@ -75,7 +75,7 @@ public class ScreenshotStickerApp extends Application {
     private void setupPrimaryStage(Stage stage) {
         stage.setTitle("SnapSticker");
         stage.getIcons().add(new javafx.scene.image.Image(getClass().getResourceAsStream("/icon.ico")));
-        
+
         // Create a minimal utility stage that will only show in taskbar
         Stage utilityStage = new Stage(javafx.stage.StageStyle.UTILITY);
         utilityStage.setTitle("SnapSticker");
@@ -85,7 +85,7 @@ public class ScreenshotStickerApp extends Application {
         utilityStage.setX(-1000);
         utilityStage.setY(-1000);
         utilityStage.show();
-        
+
         // Hide the main stage
         stage.hide();
     }
@@ -104,6 +104,16 @@ public class ScreenshotStickerApp extends Application {
         } catch (NativeHookException ignored) {
 
         }
+
+        if (SystemTray.isSupported()) {
+            SystemTray tray = SystemTray.getSystemTray();
+            for (TrayIcon icon : tray.getTrayIcons()) {
+                tray.remove(icon);
+            }
+        }
+
+        Platform.exit();
+        System.exit(0);
     }
 
     @SuppressWarnings("all")
