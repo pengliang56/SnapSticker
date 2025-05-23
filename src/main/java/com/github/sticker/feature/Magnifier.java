@@ -37,13 +37,17 @@ public class Magnifier extends VBox {
     private final Robot robot;
     private final double zoomLevel = 6;
 
-    // Add offset constants
-    private static final int OFFSET_X = 10;
-    private static final int OFFSET_Y = 10;
+    // Optimize offset constants for better following
+    private static final int OFFSET_X = 20;
+    private static final int OFFSET_Y = 20;
 
     private static final Color CROSSHAIR_COLOR = Color.rgb(2, 183, 200, 0.8);
 
-    // Add color format state
+    // Double buffering
+    private final Canvas backBuffer;
+    private volatile boolean isRendering = false;
+
+    // Color format state
     private boolean showHexFormat = false;
     private Color currentColor = Color.BLACK;
 
@@ -53,14 +57,21 @@ public class Magnifier extends VBox {
     private volatile int currentX, currentY;
     private volatile BufferedImage lastCapture;
     private volatile WritableImage outputBuffer;
-    private static final int UPDATE_INTERVAL_MS = 16; // ~60 FPS
+    private static final int UPDATE_INTERVAL_MS = 8; // 120 FPS
+    private static final int CAPTURE_SIZE = (int) (Math.max(MAG_WIDTH, MAG_HEIGHT) / 6) + 2; // Optimize capture size
 
     public Magnifier() throws AWTException {
         this.robot = new Robot();
-        robot.setAutoDelay(0);  // Disable robot auto-delay
+        robot.setAutoDelay(0);
 
-        // Setup UI components
+        // Setup UI components with lightweight style
         magnifierCanvas = new Canvas(MAG_WIDTH, MAG_HEIGHT);
+        backBuffer = new Canvas(MAG_WIDTH, MAG_HEIGHT);
+        
+        // Enable hardware acceleration
+        magnifierCanvas.setCache(true);
+        magnifierCanvas.setCacheHint(javafx.scene.CacheHint.SPEED);
+        
         coordLabel = new Label();
         colorLabel = new Label();
         colorPreview = new Rectangle(12, 12);
@@ -68,10 +79,11 @@ public class Magnifier extends VBox {
         // Initialize buffers
         outputBuffer = new WritableImage(MAG_WIDTH, MAG_HEIGHT);
 
-        // Setup update executor
+        // Setup update executor with optimized thread
         updateExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
             Thread t = new Thread(r, "Magnifier-Update");
             t.setDaemon(true);
+            t.setPriority(Thread.MAX_PRIORITY);
             return t;
         });
 
@@ -232,7 +244,11 @@ public class Magnifier extends VBox {
         updateExecutor.scheduleAtFixedRate(() -> {
             if (updatePending.get()) {
                 updatePending.set(false);
-                updateMagnifier(currentX, currentY);
+                try {
+                    updateMagnifier(currentX, currentY);
+                } catch (Exception e) {
+                    // Ignore errors to keep the loop running
+                }
             }
         }, 0, UPDATE_INTERVAL_MS, TimeUnit.MILLISECONDS);
     }
@@ -244,35 +260,28 @@ public class Magnifier extends VBox {
         // Calculate total height including info panel
         double totalHeight = MAG_HEIGHT + getHeight() - magnifierCanvas.getHeight();
 
-        // Calculate positions with bounds checking
+        // Simple position calculation for better responsiveness
         double posX = screenX + OFFSET_X;
         double posY = screenY + OFFSET_Y;
 
-        // Adjust X position if too close to right edge
+        // Quick bounds adjustment
         if (posX + MAG_WIDTH > screenBounds.getMaxX()) {
             posX = screenX - OFFSET_X - MAG_WIDTH;
         }
-
-        // Adjust Y position if too close to bottom edge
         if (posY + totalHeight > screenBounds.getMaxY()) {
             posY = screenY - OFFSET_Y - totalHeight;
         }
 
-        // Ensure magnifier stays within screen bounds
-        posX = Math.max(screenBounds.getMinX(), Math.min(posX, screenBounds.getMaxX() - MAG_WIDTH));
-        posY = Math.max(screenBounds.getMinY(), Math.min(posY, screenBounds.getMaxY() - totalHeight));
-
-        // Update magnifier position
+        // Direct position update
         setLayoutX(posX);
         setLayoutY(posY);
 
-        // Ensure window stays on top
+        // Keep window on top
         if (getScene() != null && getScene().getWindow() instanceof javafx.stage.Stage) {
-            javafx.stage.Stage stage = (javafx.stage.Stage) getScene().getWindow();
-            stage.setAlwaysOnTop(true);
-            stage.toFront();
+            ((javafx.stage.Stage) getScene().getWindow()).setAlwaysOnTop(true);
         }
 
+        // Update state and request refresh
         currentX = screenX;
         currentY = screenY;
         updatePending.set(true);
@@ -285,88 +294,100 @@ public class Magnifier extends VBox {
     }
 
     private void updateMagnifier(int screenX, int screenY) {
+        if (isRendering) {
+            return; // Skip if still rendering previous frame
+        }
+        
         try {
-            // Capture and process in background thread
-            int captureWidth = (int) (MAG_WIDTH / zoomLevel);
-            int captureHeight = (int) (MAG_HEIGHT / zoomLevel);
-
-            // Calculate the capture position to center on mouse
-            int captureX = screenX - (captureWidth / 2);
-            int captureY = screenY - (captureHeight / 2);
-
-            // Align to pixel grid while maintaining mouse-centered position
-            captureX = captureX - (captureX % 1);
-            captureY = captureY - (captureY % 1);
-
+            isRendering = true;
+            
+            // Calculate capture region centered on cursor
+            int captureX = screenX - CAPTURE_SIZE / 2;
+            int captureY = screenY - CAPTURE_SIZE / 2;
+            
+            // Capture smaller region for better performance
             lastCapture = robot.createScreenCapture(
-                    new java.awt.Rectangle(captureX, captureY,
-                            captureWidth, captureHeight)
-            );
+                    new java.awt.Rectangle(captureX, captureY, CAPTURE_SIZE, CAPTURE_SIZE));
 
-            // Convert and scale the image
+            // Process in background thread
             WritableImage output = outputBuffer;
             PixelWriter writer = output.getPixelWriter();
-            PixelReader reader = SwingFXUtils.toFXImage(lastCapture, null).getPixelReader();
+            
+            // Convert and scale the image efficiently
+            BufferedImage capture = lastCapture;
+            if (capture != null) {
+                // Get raw pixels for faster processing
+                int[] pixels = capture.getRGB(0, 0, CAPTURE_SIZE, CAPTURE_SIZE, null, 0, CAPTURE_SIZE);
+                
+                // Update UI on JavaFX thread
+                javafx.application.Platform.runLater(() -> {
+                    try {
+                        // Draw to back buffer first
+                        GraphicsContext backGC = backBuffer.getGraphicsContext2D();
+                        backGC.clearRect(0, 0, MAG_WIDTH, MAG_HEIGHT);
+                        
+                        // Scale and draw captured image
+                        for (int y = 0; y < MAG_HEIGHT; y++) {
+                            for (int x = 0; x < MAG_WIDTH; x++) {
+                                int srcX = (int) (x / zoomLevel);
+                                int srcY = (int) (y / zoomLevel);
+                                
+                                if (srcX >= 0 && srcX < CAPTURE_SIZE && srcY >= 0 && srcY < CAPTURE_SIZE) {
+                                    int pixel = pixels[srcY * CAPTURE_SIZE + srcX];
+                                    writer.setArgb(x, y, pixel);
+                                }
+                            }
+                        }
+                        
+                        // Draw the scaled image to back buffer
+                        backGC.drawImage(output, 0, 0);
+                        
+                        // Draw crosshair on back buffer
+                        drawCrosshair(backGC);
 
-            // Batch pixel operations
-            int[] pixels = new int[captureWidth * captureHeight];
-            reader.getPixels(0, 0, captureWidth, captureHeight,
-                    PixelFormat.getIntArgbInstance(), pixels, 0, captureWidth);
-
-            // Update UI on JavaFX thread
-            javafx.application.Platform.runLater(() -> {
-                // Draw magnified image
-                for (int y = 0; y < MAG_HEIGHT; y++) {
-                    for (int x = 0; x < MAG_WIDTH; x++) {
-                        int srcX = (int) (x / zoomLevel);
-                        int srcY = (int) (y / zoomLevel);
-                        int pixel = pixels[srcY * captureWidth + srcX];
-                        writer.setArgb(x, y, pixel);
+                        // Draw white border on back buffer
+                        backGC.setStroke(Color.WHITE);
+                        backGC.setLineWidth(1);
+                        backGC.setLineCap(javafx.scene.shape.StrokeLineCap.SQUARE);
+                        backGC.setLineJoin(javafx.scene.shape.StrokeLineJoin.MITER);
+                        backGC.setMiterLimit(10);
+                        backGC.strokeRect(0.5, 0.5, MAG_WIDTH - 1, MAG_HEIGHT - 1);
+                        
+                        // Swap buffers - draw back buffer to front
+                        GraphicsContext frontGC = magnifierCanvas.getGraphicsContext2D();
+                        frontGC.clearRect(0, 0, MAG_WIDTH, MAG_HEIGHT);
+                        frontGC.drawImage(backBuffer.snapshot(null, null), 0, 0);
+                        
+                        // Update color info
+                        Color pixelColor = getPixelColor(screenX, screenY);
+                        updateInfo(screenX, screenY, pixelColor);
+                    } finally {
+                        isRendering = false;
                     }
-                }
-
-                // Draw to canvas
-                GraphicsContext gc = magnifierCanvas.getGraphicsContext2D();
-                gc.clearRect(0, 0, MAG_WIDTH, MAG_HEIGHT);
-                gc.drawImage(output, 0, 0);
-
-                // Draw enhanced crosshair
-                drawCrosshair(gc);
-
-                // Draw solid white border
-                gc.setStroke(Color.WHITE);
-                gc.setLineWidth(2);
-                gc.strokeRect(0, 0, MAG_WIDTH, MAG_HEIGHT);
-
-                // Update info
-                Color pixelColor = getPixelColor(screenX, screenY);
-                updateInfo(screenX, screenY, pixelColor);
-            });
+                });
+            }
         } catch (Exception e) {
-            // just only print
-            System.out.println(e.getMessage());
+            isRendering = false;
+            System.out.println("Error updating magnifier: " + e.getMessage());
         }
     }
 
     private void drawCrosshair(GraphicsContext gc) {
         final int centerX = MAG_WIDTH / 2;
         final int centerY = MAG_HEIGHT / 2;
-
-        // Calculate pixel-aligned positions
-        double alignedX = Math.floor(centerX / zoomLevel) * zoomLevel + zoomLevel / 2;
-        double alignedY = Math.floor(centerY / zoomLevel) * zoomLevel + zoomLevel / 2;
-
-        // Draw main crosshair
+        
+        // Calculate pixel-perfect positions
+        double alignedX = Math.round(centerX / zoomLevel) * zoomLevel;
+        double alignedY = Math.round(centerY / zoomLevel) * zoomLevel;
+        
         gc.setGlobalAlpha(0.2);
         gc.setLineWidth(zoomLevel);
         gc.setStroke(CROSSHAIR_COLOR);
-
-        // Horizontal line
+        
+        // Draw crosshair lines
         gc.strokeLine(0, alignedY, MAG_WIDTH, alignedY);
-        // Vertical line
         gc.strokeLine(alignedX, 0, alignedX, MAG_HEIGHT);
-
-        // Reset global alpha
+        
         gc.setGlobalAlpha(1.0);
     }
 
