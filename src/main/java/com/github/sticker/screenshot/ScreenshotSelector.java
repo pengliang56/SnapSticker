@@ -340,49 +340,69 @@ public class ScreenshotSelector {
         // 移除旧的标记点（如果存在）
         root.getChildren().removeIf(node -> node instanceof javafx.scene.shape.Circle);
         
-        // 四个角的标记
-        javafx.scene.shape.Circle topLeft = createMarker();
-        javafx.scene.shape.Circle topRight = createMarker();
-        javafx.scene.shape.Circle bottomLeft = createMarker();
-        javafx.scene.shape.Circle bottomRight = createMarker();
+        // 预先创建所有标记点
+        List<javafx.scene.shape.Circle> markers = new ArrayList<>(8);
+        for (int i = 0; i < 8; i++) {
+            markers.add(createMarker());
+        }
 
-        // 四边中点的标记
-        javafx.scene.shape.Circle topMid = createMarker();
-        javafx.scene.shape.Circle bottomMid = createMarker();
-        javafx.scene.shape.Circle leftMid = createMarker();
-        javafx.scene.shape.Circle rightMid = createMarker();
+        // 批量添加到场景
+        root.getChildren().addAll(markers);
 
-        // 绑定位置
-        topLeft.centerXProperty().bind(selectionArea.xProperty());
-        topLeft.centerYProperty().bind(selectionArea.yProperty());
+        // 使用简单的位置更新而不是绑定
+        updateMarkersPosition(markers);
 
-        topRight.centerXProperty().bind(selectionArea.xProperty().add(selectionArea.widthProperty()));
-        topRight.centerYProperty().bind(selectionArea.yProperty());
+        // 添加选择框位置变化的监听器
+        ChangeListener<Number> updateListener = (obs, oldVal, newVal) -> {
+            updateMarkersPosition(markers);
+        };
 
-        bottomLeft.centerXProperty().bind(selectionArea.xProperty());
-        bottomLeft.centerYProperty().bind(selectionArea.yProperty().add(selectionArea.heightProperty()));
+        // 移除旧的监听器
+        if (selectionArea.getProperties().get("markerListener") != null) {
+            ChangeListener<Number> oldListener = (ChangeListener<Number>) selectionArea.getProperties().get("markerListener");
+            selectionArea.xProperty().removeListener(oldListener);
+            selectionArea.yProperty().removeListener(oldListener);
+            selectionArea.widthProperty().removeListener(oldListener);
+            selectionArea.heightProperty().removeListener(oldListener);
+        }
 
-        bottomRight.centerXProperty().bind(selectionArea.xProperty().add(selectionArea.widthProperty()));
-        bottomRight.centerYProperty().bind(selectionArea.yProperty().add(selectionArea.heightProperty()));
+        // 添加新的监听器
+        selectionArea.xProperty().addListener(updateListener);
+        selectionArea.yProperty().addListener(updateListener);
+        selectionArea.widthProperty().addListener(updateListener);
+        selectionArea.heightProperty().addListener(updateListener);
 
-        // 中点标记位置绑定
-        topMid.centerXProperty().bind(selectionArea.xProperty().add(selectionArea.widthProperty().divide(2)));
-        topMid.centerYProperty().bind(selectionArea.yProperty());
+        // 保存监听器引用以便后续移除
+        selectionArea.getProperties().put("markerListener", updateListener);
+    }
 
-        bottomMid.centerXProperty().bind(selectionArea.xProperty().add(selectionArea.widthProperty().divide(2)));
-        bottomMid.centerYProperty().bind(selectionArea.yProperty().add(selectionArea.heightProperty()));
+    private void updateMarkersPosition(List<javafx.scene.shape.Circle> markers) {
+        if (markers.size() != 8 || selectionArea == null) return;
 
-        leftMid.centerXProperty().bind(selectionArea.xProperty());
-        leftMid.centerYProperty().bind(selectionArea.yProperty().add(selectionArea.heightProperty().divide(2)));
+        double x = selectionArea.getX();
+        double y = selectionArea.getY();
+        double width = selectionArea.getWidth();
+        double height = selectionArea.getHeight();
+        double midX = x + width / 2;
+        double midY = y + height / 2;
 
-        rightMid.centerXProperty().bind(selectionArea.xProperty().add(selectionArea.widthProperty()));
-        rightMid.centerYProperty().bind(selectionArea.yProperty().add(selectionArea.heightProperty().divide(2)));
+        // 更新所有标记点位置
+        // 顺序：左上、上中、右上、右中、右下、下中、左下、左中
+        updateMarkerPosition(markers.get(0), x, y);           // 左上
+        updateMarkerPosition(markers.get(1), midX, y);        // 上中
+        updateMarkerPosition(markers.get(2), x + width, y);   // 右上
+        updateMarkerPosition(markers.get(3), x + width, midY);// 右中
+        updateMarkerPosition(markers.get(4), x + width, y + height); // 右下
+        updateMarkerPosition(markers.get(5), midX, y + height);      // 下中
+        updateMarkerPosition(markers.get(6), x, y + height);         // 左下
+        updateMarkerPosition(markers.get(7), x, midY);              // 左中
+    }
 
-        // 添加所有标记到根节点
-        root.getChildren().addAll(
-            topLeft, topRight, bottomLeft, bottomRight,
-            topMid, bottomMid, leftMid, rightMid
-        );
+    private void updateMarkerPosition(javafx.scene.shape.Circle marker, double x, double y) {
+        marker.setCache(true);
+        marker.setCacheHint(CacheHint.SPEED);
+        marker.setCenterX(x);
+        marker.setCenterY(y);
     }
 
     private javafx.scene.shape.Circle createMarker() {
@@ -391,6 +411,8 @@ public class ScreenshotSelector {
         marker.setStroke(Color.WHITE);
         marker.setStrokeWidth(2);
         marker.setMouseTransparent(true);
+        marker.setCache(true);
+        marker.setCacheHint(CacheHint.SPEED);
         return marker;
     }
 
