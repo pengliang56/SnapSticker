@@ -300,7 +300,7 @@ public class ScreenshotSelector {
         mask.setCacheHint(CacheHint.SPEED);
         mask.setFill(Color.rgb(0, 0, 0, 0.01));
         mask.setStroke(Color.rgb(30, 109, 235));
-        mask.setStrokeWidth(1.5);
+        mask.setStrokeWidth(3);
         mask.setStrokeType(StrokeType.OUTSIDE);
         return mask;
     }
@@ -356,9 +356,9 @@ public class ScreenshotSelector {
 
     private javafx.scene.shape.Circle createMarker() {
         javafx.scene.shape.Circle marker = new javafx.scene.shape.Circle(4);
-        marker.setFill(Color.WHITE);
-        marker.setStroke(Color.rgb(30, 109, 235));
-        marker.setStrokeWidth(1.5);
+        marker.setFill(Color.rgb(30, 109, 235));
+        marker.setStroke(Color.WHITE);
+        marker.setStrokeWidth(2);
         marker.setMouseTransparent(true);
         return marker;
     }
