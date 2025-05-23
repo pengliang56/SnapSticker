@@ -207,14 +207,13 @@ public class ScreenshotSelector {
      * Initialize all mask layers for the screenshot selection
      */
     private void initializeMaskLayers() {
-        selectionArea = createSelectionMask();
         createSelectCalculatedMask();
         createDrawCanvsaArea();
 
         root.getChildren().addAll(
                 drawCanvasArea,
                 maskTop, maskBottom, maskLeft, maskRight,
-                selectionArea, magnifier);
+                magnifier);
     }
 
     private void createSelectCalculatedMask() {
@@ -392,6 +391,13 @@ public class ScreenshotSelector {
 
                 startX = event.getScreenX();
                 startY = event.getScreenY();
+                
+                // 创建选择区域
+                if (selectionArea == null) {
+                    selectionArea = createSelectionMask();
+                    root.getChildren().add(selectionArea);
+                    createCornerAndMidpointMarkers();
+                }
             }
         });
 
@@ -439,9 +445,6 @@ public class ScreenshotSelector {
             root.getChildren().remove(floatingToolbar.getToolbar());
             floatingToolbar = null;
         }
-        
-        // 在选择完成后创建标记点
-        createCornerAndMidpointMarkers();
         
         floatingToolbar = new FloatingToolbar(selectionArea, root, drawCanvasArea, this);
     }
