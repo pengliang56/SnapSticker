@@ -300,10 +300,68 @@ public class ScreenshotSelector {
         mask.setCache(true);
         mask.setCacheHint(CacheHint.SPEED);
         mask.setFill(Color.rgb(0, 0, 0, 0.01));
-        mask.setStroke(Color.rgb(0, 99, 250, 1));
-        mask.setStrokeWidth(2);
+        mask.setStroke(Color.rgb(30, 109, 235));
+        mask.setStrokeWidth(1.5);
         mask.setStrokeType(StrokeType.OUTSIDE);
         return mask;
+    }
+
+    private void createCornerAndMidpointMarkers() {
+        // 移除旧的标记点（如果存在）
+        root.getChildren().removeIf(node -> node instanceof javafx.scene.shape.Circle);
+        
+        // 四个角的标记
+        javafx.scene.shape.Circle topLeft = createMarker();
+        javafx.scene.shape.Circle topRight = createMarker();
+        javafx.scene.shape.Circle bottomLeft = createMarker();
+        javafx.scene.shape.Circle bottomRight = createMarker();
+
+        // 四边中点的标记
+        javafx.scene.shape.Circle topMid = createMarker();
+        javafx.scene.shape.Circle bottomMid = createMarker();
+        javafx.scene.shape.Circle leftMid = createMarker();
+        javafx.scene.shape.Circle rightMid = createMarker();
+
+        // 绑定位置
+        topLeft.centerXProperty().bind(selectionArea.xProperty());
+        topLeft.centerYProperty().bind(selectionArea.yProperty());
+
+        topRight.centerXProperty().bind(selectionArea.xProperty().add(selectionArea.widthProperty()));
+        topRight.centerYProperty().bind(selectionArea.yProperty());
+
+        bottomLeft.centerXProperty().bind(selectionArea.xProperty());
+        bottomLeft.centerYProperty().bind(selectionArea.yProperty().add(selectionArea.heightProperty()));
+
+        bottomRight.centerXProperty().bind(selectionArea.xProperty().add(selectionArea.widthProperty()));
+        bottomRight.centerYProperty().bind(selectionArea.yProperty().add(selectionArea.heightProperty()));
+
+        // 中点标记位置绑定
+        topMid.centerXProperty().bind(selectionArea.xProperty().add(selectionArea.widthProperty().divide(2)));
+        topMid.centerYProperty().bind(selectionArea.yProperty());
+
+        bottomMid.centerXProperty().bind(selectionArea.xProperty().add(selectionArea.widthProperty().divide(2)));
+        bottomMid.centerYProperty().bind(selectionArea.yProperty().add(selectionArea.heightProperty()));
+
+        leftMid.centerXProperty().bind(selectionArea.xProperty());
+        leftMid.centerYProperty().bind(selectionArea.yProperty().add(selectionArea.heightProperty().divide(2)));
+
+        rightMid.centerXProperty().bind(selectionArea.xProperty().add(selectionArea.widthProperty()));
+        rightMid.centerYProperty().bind(selectionArea.yProperty().add(selectionArea.heightProperty().divide(2)));
+
+        // 添加所有标记到根节点
+        root.getChildren().addAll(
+            topLeft, topRight, bottomLeft, bottomRight,
+            topMid, bottomMid, leftMid, rightMid
+        );
+    }
+
+    private javafx.scene.shape.Circle createMarker() {
+        javafx.scene.shape.Circle marker = new javafx.scene.shape.Circle(4);
+        marker.setFill(Color.WHITE);
+        marker.setStroke(Color.rgb(30, 109, 235));
+        marker.setStrokeWidth(1.5);
+        marker.setMouseTransparent(true);
+        return marker;
     }
 
     /**
@@ -381,6 +439,10 @@ public class ScreenshotSelector {
             root.getChildren().remove(floatingToolbar.getToolbar());
             floatingToolbar = null;
         }
+        
+        // 在选择完成后创建标记点
+        createCornerAndMidpointMarkers();
+        
         floatingToolbar = new FloatingToolbar(selectionArea, root, drawCanvasArea, this);
     }
 
