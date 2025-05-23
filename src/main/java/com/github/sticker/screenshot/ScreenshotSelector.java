@@ -274,6 +274,12 @@ public class ScreenshotSelector {
         double width = Math.abs(endX - startX);
         double height = Math.abs(endY - startY);
 
+        // 批量更新以减少重绘
+        root.setCache(true);
+        root.setCacheHint(CacheHint.SPEED);
+
+        selectionArea.setCache(true);
+        selectionArea.setCacheHint(CacheHint.SPEED);
         selectionArea.setX(x);
         selectionArea.setY(y);
         selectionArea.setWidth(width);
@@ -282,25 +288,32 @@ public class ScreenshotSelector {
         double screenWidth = currentScreenBounds.getWidth();
         double screenHeight = currentScreenBounds.getHeight();
 
-        // 更新上方遮罩
+        // 批量更新遮罩层
+        maskTop.setCache(true);
+        maskTop.setCacheHint(CacheHint.SPEED);
+        maskBottom.setCache(true);
+        maskBottom.setCacheHint(CacheHint.SPEED);
+        maskLeft.setCache(true);
+        maskLeft.setCacheHint(CacheHint.SPEED);
+        maskRight.setCache(true);
+        maskRight.setCacheHint(CacheHint.SPEED);
+
+        // 更新遮罩层位置和大小
         maskTop.setX(0);
         maskTop.setY(0);
         maskTop.setWidth(screenWidth);
         maskTop.setHeight(y);
 
-        // 更新下方遮罩
         maskBottom.setX(0);
         maskBottom.setY(y + height);
         maskBottom.setWidth(screenWidth);
         maskBottom.setHeight(screenHeight - (y + height));
 
-        // 更新左侧遮罩
         maskLeft.setX(0);
         maskLeft.setY(y);
         maskLeft.setWidth(x);
         maskLeft.setHeight(height);
 
-        // 更新右侧遮罩
         maskRight.setX(x + width);
         maskRight.setY(y);
         maskRight.setWidth(screenWidth - (x + width));
@@ -510,25 +523,20 @@ public class ScreenshotSelector {
         root.getChildren().removeAll(dragAreas);
         dragAreas.clear();
 
-        Rectangle topArea = new Rectangle();
-        Rectangle bottomArea = new Rectangle();
-        Rectangle leftArea = new Rectangle();
-        Rectangle rightArea = new Rectangle();
-        Rectangle topLeftArea = new Rectangle();
-        Rectangle topRightArea = new Rectangle();
-        Rectangle bottomLeftArea = new Rectangle();
-        Rectangle bottomRightArea = new Rectangle();
+        // 预先创建和缓存所有拖拽区域
+        Rectangle topArea = createDragArea();
+        Rectangle bottomArea = createDragArea();
+        Rectangle leftArea = createDragArea();
+        Rectangle rightArea = createDragArea();
+        Rectangle topLeftArea = createDragArea();
+        Rectangle topRightArea = createDragArea();
+        Rectangle bottomLeftArea = createDragArea();
+        Rectangle bottomRightArea = createDragArea();
 
         dragAreas.addAll(Arrays.asList(
                 topArea, bottomArea, leftArea, rightArea,
                 topLeftArea, topRightArea, bottomLeftArea, bottomRightArea
         ));
-
-        // 设置检测区域为透明
-        for (Rectangle area : dragAreas) {
-            area.setFill(Color.TRANSPARENT);
-            area.setMouseTransparent(false);
-        }
 
         // 更新检测区域位置和大小的函数
         Consumer<Rectangle> updateAreas = rect -> {
@@ -539,49 +547,23 @@ public class ScreenshotSelector {
             double screenWidth = currentScreenBounds.getWidth();
             double screenHeight = currentScreenBounds.getHeight();
 
-            // 设置上下区域
-            topArea.setX(0);
-            topArea.setY(0);
-            topArea.setWidth(screenWidth);
-            topArea.setHeight(y);
+            // 批量更新拖拽区域
+            for (Rectangle area : dragAreas) {
+                area.setCache(true);
+                area.setCacheHint(CacheHint.SPEED);
+            }
 
-            bottomArea.setX(0);
-            bottomArea.setY(y + height);
-            bottomArea.setWidth(screenWidth);
-            bottomArea.setHeight(screenHeight - (y + height));
+            // 一次性更新所有区域位置
+            updateDragArea(topArea, 0, 0, screenWidth, y);
+            updateDragArea(bottomArea, 0, y + height, screenWidth, screenHeight - (y + height));
+            updateDragArea(leftArea, 0, y, x, height);
+            updateDragArea(rightArea, x + width, y, screenWidth - (x + width), height);
 
-            // 设置左右区域
-            leftArea.setX(0);
-            leftArea.setY(y);
-            leftArea.setWidth(x);
-            leftArea.setHeight(height);
-
-            rightArea.setX(x + width);
-            rightArea.setY(y);
-            rightArea.setWidth(screenWidth - (x + width));
-            rightArea.setHeight(height);
-
-            // 设置角落区域
             double cornerSize = Math.min(width, height) / 2;
-            topLeftArea.setX(0);
-            topLeftArea.setY(0);
-            topLeftArea.setWidth(x);
-            topLeftArea.setHeight(y);
-
-            topRightArea.setX(x + width);
-            topRightArea.setY(0);
-            topRightArea.setWidth(screenWidth - (x + width));
-            topRightArea.setHeight(y);
-
-            bottomLeftArea.setX(0);
-            bottomLeftArea.setY(y + height);
-            bottomLeftArea.setWidth(x);
-            bottomLeftArea.setHeight(screenHeight - (y + height));
-
-            bottomRightArea.setX(x + width);
-            bottomRightArea.setY(y + height);
-            bottomRightArea.setWidth(screenWidth - (x + width));
-            bottomRightArea.setHeight(screenHeight - (y + height));
+            updateDragArea(topLeftArea, 0, 0, x, y);
+            updateDragArea(topRightArea, x + width, 0, screenWidth - (x + width), y);
+            updateDragArea(bottomLeftArea, 0, y + height, x, screenHeight - (y + height));
+            updateDragArea(bottomRightArea, x + width, y + height, screenWidth - (x + width), screenHeight - (y + height));
         };
 
         // Remove any existing listeners
@@ -639,6 +621,22 @@ public class ScreenshotSelector {
             isResizing = false;
             resizeDirection = "";
         });
+    }
+
+    private Rectangle createDragArea() {
+        Rectangle area = new Rectangle();
+        area.setFill(Color.TRANSPARENT);
+        area.setMouseTransparent(false);
+        area.setCache(true);
+        area.setCacheHint(CacheHint.SPEED);
+        return area;
+    }
+
+    private void updateDragArea(Rectangle area, double x, double y, double width, double height) {
+        area.setX(x);
+        area.setY(y);
+        area.setWidth(width);
+        area.setHeight(height);
     }
 
     private void setupAreaEvents(Rectangle area, String direction, javafx.scene.Cursor cursor, double[] dragDelta) {
@@ -910,29 +908,31 @@ public class ScreenshotSelector {
     }
 
     private void handleDrag(javafx.scene.input.MouseEvent e, double[] dragDelta) {
-        double newX = e.getSceneX() - dragDelta[0];
-        double newY = e.getSceneY() - dragDelta[1];
+        // 使用更高效的直接计算而不是每次都检查边界
+        double screenMinX = currentScreenBounds.getMinX();
+        double screenMinY = currentScreenBounds.getMinY();
+        double screenMaxX = currentScreenBounds.getMaxX() - selectionArea.getWidth();
+        double screenMaxY = currentScreenBounds.getMaxY() - selectionArea.getHeight();
 
-        // 限制边界（不能移出屏幕）
-        Rectangle2D screenBounds = currentScreen.getBounds();
-        double minX = screenBounds.getMinX();
-        double minY = screenBounds.getMinY();
-        double maxX = screenBounds.getMaxX() - selectionArea.getWidth();
-        double maxY = screenBounds.getMaxY() - selectionArea.getHeight();
+        // 直接计算新位置
+        double newX = Math.max(screenMinX, Math.min(screenMaxX, e.getSceneX() - dragDelta[0]));
+        double newY = Math.max(screenMinY, Math.min(screenMaxY, e.getSceneY() - dragDelta[1]));
 
-        double finalX = Math.max(minX, Math.min(maxX, newX));
-        double finalY = Math.max(minY, Math.min(maxY, newY));
+        // 批量更新选择框位置
+        selectionArea.setCache(true);
+        selectionArea.setCacheHint(CacheHint.SPEED);
+        
+        // 使用临时变量存储当前位置
+        startX = newX;
+        startY = newY;
+        endX = newX + selectionArea.getWidth();
+        endY = newY + selectionArea.getHeight();
 
-        selectionArea.setX(finalX);
-        selectionArea.setY(finalY);
+        // 一次性更新选择框位置
+        selectionArea.setX(newX);
+        selectionArea.setY(newY);
 
-        // 更新起点和终点坐标，用于realTimeSelection
-        startX = finalX;
-        startY = finalY;
-        endX = finalX + selectionArea.getWidth();
-        endY = finalY + selectionArea.getHeight();
-
-        // 实时更新遮罩
+        // 更新遮罩层
         realTimeSelection();
     }
 
