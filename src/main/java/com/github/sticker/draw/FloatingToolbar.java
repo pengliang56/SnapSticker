@@ -135,8 +135,9 @@ public class FloatingToolbar {
             FileChooser fileChooser = new FileChooser();
             fileChooser.setTitle("Save Screenshot");
 
-            String defaultFileName = String.format("SnapSticker_%1$tY%1$tm%1$td_%1$tH%1$tM%1$tS.png",
+            String timestamp = String.format("%1$tY%1$tm%1$td%1$tH%1$tM%1$tS",
                     System.currentTimeMillis());
+            String defaultFileName = "SnapSticker_" + timestamp + ".png";
 
             fileChooser.setInitialFileName(defaultFileName);
             fileChooser.getExtensionFilters().add(
@@ -153,6 +154,7 @@ public class FloatingToolbar {
                 WritableImage image = snapshotScreen();
                 try {
                     ImageIO.write(SwingFXUtils.fromFXImage(image, null), "png", file);
+                    screenshotSelector.cancelSelection();  // 保存完成后清理选择框资源
                 } catch (IOException ignored) {
                 }
             }
@@ -484,8 +486,6 @@ public class FloatingToolbar {
         }
 
         Point2D sceneCoords = scene.getRoot().localToScreen(x, y);
-        System.out.println("截图坐标: x=" + sceneCoords.getX() + ", y=" + sceneCoords.getY() + 
-                          ", width=" + width + ", height=" + height);
 
         java.awt.Rectangle awtRect = new java.awt.Rectangle(
                 (int) sceneCoords.getX(),
@@ -497,9 +497,6 @@ public class FloatingToolbar {
         BufferedImage screenImage = robot.createScreenCapture(awtRect);
         WritableImage screenContent = new WritableImage((int) width, (int) height);
         SwingFXUtils.toFXImage(screenImage, screenContent);
-        
-        // 保存屏幕内容
-        saveImageToDesktop(screenContent, "1_screen_content.png");
         
         // 恢复窗口可见性
         if (wasVisible) {
@@ -526,9 +523,6 @@ public class FloatingToolbar {
         );
         
         WritableImage drawingContent = drawingCanvas.snapshot(params, null);
-        
-        // 保存绘画内容
-        saveImageToDesktop(drawingContent, "2_drawing_content.png");
 
         // 第三步：合并两个图像
         Canvas canvas = new Canvas(width, height);
@@ -537,30 +531,11 @@ public class FloatingToolbar {
         // 先绘制屏幕内容
         gc.drawImage(screenContent, 0, 0);
         
-        // 保存中间结果
-        saveImageToDesktop(canvas.snapshot(params, null), "3_after_screen.png");
-        
         // 再绘制绘画内容（使用叠加模式）
         gc.setGlobalBlendMode(BlendMode.SRC_OVER);
         gc.drawImage(drawingContent, 0, 0);
         
-        // 保存最终结果
-        WritableImage finalImage = canvas.snapshot(params, null);
-        saveImageToDesktop(finalImage, "4_final_result.png");
-
-        return finalImage;
-    }
-
-    private void saveImageToDesktop(WritableImage image, String fileName) {
-        try {
-            String desktopPath = System.getProperty("user.home") + "/Desktop/";
-            File outputFile = new File(desktopPath + fileName);
-            BufferedImage bufferedImage = SwingFXUtils.fromFXImage(image, null);
-            ImageIO.write(bufferedImage, "png", outputFile);
-            System.out.println("已保存图片: " + outputFile.getAbsolutePath());
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        return canvas.snapshot(params, null);
     }
 
     private Separator createStyledSeparator() {
