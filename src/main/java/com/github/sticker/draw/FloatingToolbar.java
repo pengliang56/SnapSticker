@@ -636,11 +636,9 @@ public class FloatingToolbar {
         sticker.setX(selectionArea.getX());
         sticker.setY(selectionArea.getY());
         
-        // 添加拖拽功能
-        setupStickerDrag(sticker);
-        
-        // 添加到贴图窗口
-        stickerStage.getRoot().getChildren().add(sticker);
+        // 添加到贴图窗口并显示
+        stickerStage.addSticker(sticker);
+        stickerStage.show();
         
         // 关闭截图选择器
         screenshotSelector.cancelSelection();

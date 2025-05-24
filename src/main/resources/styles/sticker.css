@@ -1,0 +1,37 @@
+.sticker-context-menu {
+    -fx-background-color: white;
+    -fx-background-radius: 3;
+    -fx-border-radius: 3;
+    -fx-padding: 4;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 10, 0, 0, 3);
+}
+
+.sticker-context-menu .menu-item {
+    -fx-font-family: "Segoe UI";
+    -fx-font-size: 15px;
+    -fx-padding: 4 12;
+    -fx-min-height: 28px;
+}
+
+.sticker-context-menu .menu-item:focused {
+    -fx-background-color: #cce4ff;
+    -fx-text-fill: black;
+}
+
+.sticker-context-menu .menu-item:hover {
+    -fx-background-color: #cce4ff;
+    -fx-text-fill: black;
+}
+
+.sticker-context-menu .menu-item .label {
+    -fx-text-fill: black;
+}
+
+.sticker-context-menu .separator:horizontal .line {
+    -fx-border-color: #e0e0e0;
+    -fx-border-width: 0.5px;
+}
+
+.sticker-context-menu .separator {
+    -fx-padding: 2 0;
+} 
