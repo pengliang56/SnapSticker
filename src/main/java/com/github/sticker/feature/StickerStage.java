@@ -81,6 +81,7 @@ public class StickerStage {
      * 显示贴图窗口
      */
     public void show() {
+        StealthWindow.configure(stage);
         stage.show();
     }
 

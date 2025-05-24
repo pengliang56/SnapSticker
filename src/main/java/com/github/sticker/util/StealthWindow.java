@@ -13,6 +13,11 @@ public class StealthWindow {
     public static void configure(Stage stage) {
         stage.initStyle(StageStyle.TRANSPARENT);
         stage.setAlwaysOnTop(true);
+        
+        // 立即尝试隐藏任务栏图标
+        hideTaskbarIcon(stage);
+        
+        // 在窗口显示时再次尝试隐藏任务栏图标
         stage.setOnShown(e -> hideTaskbarIcon(stage));
     }
 

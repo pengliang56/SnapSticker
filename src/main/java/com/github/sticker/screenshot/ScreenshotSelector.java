@@ -511,7 +511,17 @@ public class ScreenshotSelector {
             floatingToolbar = null;
         }
         
+        // 在创建工具栏之前先隐藏放大镜
+        magnifier.setVisible(false);
+        
         floatingToolbar = new FloatingToolbar(selectionArea, root, drawCanvasArea, this);
+        
+        // 检查鼠标是否在选区内，如果在选区内才显示放大镜
+        boolean isInside = isMouseInSelectionArea(event.getX(), event.getY());
+        if (isInside) {
+            magnifier.setVisible(true);
+            magnifier.update((int) event.getScreenX(), (int) event.getScreenY());
+        }
     }
 
     private void updateSelectionAreaPosition() {

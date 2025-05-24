@@ -10,9 +10,12 @@ import javafx.geometry.Point2D;
 import javafx.geometry.Rectangle2D;
 import javafx.geometry.Pos;
 import javafx.scene.*;
+import javafx.scene.canvas.Canvas;
+import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.Cursor;
 import javafx.scene.control.*;
 import javafx.scene.control.Button;
+import javafx.scene.effect.BlendMode;
 import javafx.scene.effect.DropShadow;
 import javafx.scene.image.ImageView;
 import javafx.scene.image.WritableImage;
@@ -472,6 +475,7 @@ public class FloatingToolbar {
         double width = selectionArea.getWidth();
         double height = selectionArea.getHeight();
 
+        // 第一步：获取屏幕内容
         Robot robot;
         try {
             robot = new Robot();
@@ -480,6 +484,8 @@ public class FloatingToolbar {
         }
 
         Point2D sceneCoords = scene.getRoot().localToScreen(x, y);
+        System.out.println("截图坐标: x=" + sceneCoords.getX() + ", y=" + sceneCoords.getY() + 
+                          ", width=" + width + ", height=" + height);
 
         java.awt.Rectangle awtRect = new java.awt.Rectangle(
                 (int) sceneCoords.getX(),
@@ -489,16 +495,72 @@ public class FloatingToolbar {
         );
 
         BufferedImage screenImage = robot.createScreenCapture(awtRect);
+        WritableImage screenContent = new WritableImage((int) width, (int) height);
+        SwingFXUtils.toFXImage(screenImage, screenContent);
+        
+        // 保存屏幕内容
+        saveImageToDesktop(screenContent, "1_screen_content.png");
         
         // 恢复窗口可见性
         if (wasVisible) {
             stage.show();
         }
 
-        WritableImage finalImage = new WritableImage((int) width, (int) height);
-        SwingFXUtils.toFXImage(screenImage, finalImage);
+        // 第二步：获取绘画内容
+        SnapshotParameters params = new SnapshotParameters();
+        params.setFill(Color.TRANSPARENT); // 设置透明背景
+        
+        // 创建一个新的 Canvas 来获取绘画内容
+        Canvas drawingCanvas = new Canvas(width, height);
+        GraphicsContext drawingGc = drawingCanvas.getGraphicsContext2D();
+        
+        // 清除背景为透明
+        drawingGc.clearRect(0, 0, width, height);
+        
+        // 只复制绘画的部分（不包括背景）
+        drawingGc.drawImage(drawCanvas.snapshot(params, null),
+            selectionArea.getX(), selectionArea.getY(), // 源图像中的起始位置
+            width, height, // 要复制的区域大小
+            0, 0, // 目标位置
+            width, height // 目标大小
+        );
+        
+        WritableImage drawingContent = drawingCanvas.snapshot(params, null);
+        
+        // 保存绘画内容
+        saveImageToDesktop(drawingContent, "2_drawing_content.png");
+
+        // 第三步：合并两个图像
+        Canvas canvas = new Canvas(width, height);
+        GraphicsContext gc = canvas.getGraphicsContext2D();
+        
+        // 先绘制屏幕内容
+        gc.drawImage(screenContent, 0, 0);
+        
+        // 保存中间结果
+        saveImageToDesktop(canvas.snapshot(params, null), "3_after_screen.png");
+        
+        // 再绘制绘画内容（使用叠加模式）
+        gc.setGlobalBlendMode(BlendMode.SRC_OVER);
+        gc.drawImage(drawingContent, 0, 0);
+        
+        // 保存最终结果
+        WritableImage finalImage = canvas.snapshot(params, null);
+        saveImageToDesktop(finalImage, "4_final_result.png");
 
         return finalImage;
+    }
+
+    private void saveImageToDesktop(WritableImage image, String fileName) {
+        try {
+            String desktopPath = System.getProperty("user.home") + "/Desktop/";
+            File outputFile = new File(desktopPath + fileName);
+            BufferedImage bufferedImage = SwingFXUtils.fromFXImage(image, null);
+            ImageIO.write(bufferedImage, "png", outputFile);
+            System.out.println("已保存图片: " + outputFile.getAbsolutePath());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private Separator createStyledSeparator() {
