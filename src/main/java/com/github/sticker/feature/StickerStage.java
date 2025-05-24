@@ -245,7 +245,22 @@ public class StickerStage {
                     ImageView sticker = (ImageView) menuItem.getParentPopup().getOwnerNode();
                     Clipboard clipboard = Clipboard.getSystemClipboard();
                     if (clipboard.hasImage()) {
-                        sticker.setImage(clipboard.getImage());
+                        // 只保存当前位置
+                        double currentX = sticker.getX();
+                        double currentY = sticker.getY();
+                        
+                        // 设置新图片
+                        Image newImage = clipboard.getImage();
+                        sticker.setImage(newImage);
+                        
+                        // 清除可能存在的大小限制
+                        sticker.setFitWidth(0);
+                        sticker.setFitHeight(0);
+                        
+                        // 保持原来的位置
+                        sticker.setX(currentX);
+                        sticker.setY(currentY);
+                        
                         contextMenu.hide(); // 操作完成后隐藏菜单
                     }
                 }
