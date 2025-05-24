@@ -74,14 +74,15 @@ public class StickerStage {
         );
 
         stage.setScene(scene);
-        StealthWindow.configure(stage);
+        stage.show();
+        //StealthWindow.configure(stage);
     }
 
     /**
      * 显示贴图窗口
      */
     public void show() {
-        StealthWindow.configure(stage);
+        //StealthWindow.configure(stage);
         stage.show();
     }
 

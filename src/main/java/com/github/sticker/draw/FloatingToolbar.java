@@ -641,7 +641,6 @@ public class FloatingToolbar {
         
         // 添加到贴图窗口
         stickerStage.getRoot().getChildren().add(sticker);
-        stickerStage.show();
         
         // 关闭截图选择器
         screenshotSelector.cancelSelection();
