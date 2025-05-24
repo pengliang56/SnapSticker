@@ -1,5 +1,6 @@
 package com.github.sticker.draw;
 
+import com.github.sticker.feature.StickerStage;
 import com.github.sticker.screenshot.ScreenshotSelector;
 import javafx.animation.FadeTransition;
 import javafx.beans.binding.Bindings;
@@ -12,6 +13,7 @@ import javafx.scene.Cursor;
 import javafx.scene.control.*;
 import javafx.scene.control.Button;
 import javafx.scene.effect.DropShadow;
+import javafx.scene.image.ImageView;
 import javafx.scene.image.WritableImage;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
@@ -60,6 +62,7 @@ public class FloatingToolbar {
     private final Slider sizeSlider = new Slider(1, 20, 3);
 
     private final ScreenshotSelector screenshotSelector;
+    private final StickerStage stickerStage;
 
     private void createButtons() {
         Separator group1Separator = createStyledSeparator();
@@ -165,7 +168,7 @@ public class FloatingToolbar {
 
     private void createStickerButton() {
         Button btn = createIconButton(Icon.tuding, "Pin to screen(F3)");
-        btn.setOnAction(e -> System.out.println("打开贴图库"));
+        btn.setOnAction(e -> createSticker());
         toolbar.getChildren().add(btn);
     }
 
@@ -548,10 +551,68 @@ public class FloatingToolbar {
         this.selectionArea = selectionArea;
         this.parentContainer = parentContainer;
         this.screenshotSelector = screenshotSelector;
+        this.stickerStage = new StickerStage();  // 初始化贴图窗口
         initializeToolbar();
         createSubToolbar();
+        setupStickerShortcut();  // 设置贴图快捷键
         parentContainer.getChildren().add(toolbar);
         parentContainer.getChildren().remove(screenshotSelector.getMagnifier());
         parentContainer.getChildren().add(screenshotSelector.getMagnifier());
+    }
+
+    private void setupStickerShortcut() {
+        Scene scene = parentContainer.getScene();
+        scene.addEventFilter(KeyEvent.KEY_PRESSED, e -> {
+            if (e.getCode() == KeyCode.F3) {
+                createSticker();
+                e.consume();
+            }
+        });
+    }
+
+    private void createSticker() {
+        // 获取当前选区的截图
+        WritableImage image = snapshotScreen();
+        
+        // 创建贴图
+        ImageView sticker = new ImageView(image);
+        
+        // 设置贴图初始位置（使用选区的位置）
+        sticker.setX(selectionArea.getX());
+        sticker.setY(selectionArea.getY());
+        
+        // 添加拖拽功能
+        setupStickerDrag(sticker);
+        
+        // 添加到贴图窗口
+        stickerStage.getRoot().getChildren().add(sticker);
+        stickerStage.show();
+        
+        // 关闭截图选择器
+        screenshotSelector.cancelSelection();
+    }
+
+    private void setupStickerDrag(ImageView sticker) {
+        final Delta dragDelta = new Delta();
+
+        sticker.setOnMousePressed(e -> {
+            dragDelta.x = sticker.getX() - e.getScreenX();
+            dragDelta.y = sticker.getY() - e.getScreenY();
+            sticker.setCursor(Cursor.MOVE);
+        });
+
+        sticker.setOnMouseDragged(e -> {
+            sticker.setX(e.getScreenX() + dragDelta.x);
+            sticker.setY(e.getScreenY() + dragDelta.y);
+        });
+
+        sticker.setOnMouseReleased(e -> sticker.setCursor(Cursor.HAND));
+        
+        sticker.setOnMouseEntered(e -> sticker.setCursor(Cursor.HAND));
+    }
+
+    // 用于记录拖拽过程中的偏移量
+    private static class Delta {
+        double x, y;
     }
 }
