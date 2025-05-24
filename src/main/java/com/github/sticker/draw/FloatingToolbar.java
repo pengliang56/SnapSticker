@@ -643,28 +643,4 @@ public class FloatingToolbar {
         // 关闭截图选择器
         screenshotSelector.cancelSelection();
     }
-
-    private void setupStickerDrag(ImageView sticker) {
-        final Delta dragDelta = new Delta();
-
-        sticker.setOnMousePressed(e -> {
-            dragDelta.x = sticker.getX() - e.getScreenX();
-            dragDelta.y = sticker.getY() - e.getScreenY();
-            sticker.setCursor(Cursor.MOVE);
-        });
-
-        sticker.setOnMouseDragged(e -> {
-            sticker.setX(e.getScreenX() + dragDelta.x);
-            sticker.setY(e.getScreenY() + dragDelta.y);
-        });
-
-        sticker.setOnMouseReleased(e -> sticker.setCursor(Cursor.HAND));
-        
-        sticker.setOnMouseEntered(e -> sticker.setCursor(Cursor.HAND));
-    }
-
-    // 用于记录拖拽过程中的偏移量
-    private static class Delta {
-        double x, y;
-    }
 }
