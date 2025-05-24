@@ -7,6 +7,7 @@ import javafx.beans.binding.Bindings;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.geometry.Orientation;
 import javafx.geometry.Point2D;
+import javafx.geometry.Rectangle2D;
 import javafx.geometry.Pos;
 import javafx.scene.*;
 import javafx.scene.Cursor;
@@ -26,6 +27,7 @@ import javafx.scene.paint.Paint;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.shape.SVGPath;
 import javafx.stage.FileChooser;
+import javafx.stage.Stage;
 import javafx.util.Duration;
 
 import javax.imageio.ImageIO;
@@ -145,8 +147,9 @@ public class FloatingToolbar {
 
             File file = fileChooser.showSaveDialog(toolbar.getScene().getWindow());
             if (file != null) {
+                WritableImage image = snapshotScreen();
                 try {
-                    ImageIO.write(SwingFXUtils.fromFXImage(snapshotScreen(), null), "png", file);
+                    ImageIO.write(SwingFXUtils.fromFXImage(image, null), "png", file);
                 } catch (IOException ignored) {
                 }
             }
@@ -450,6 +453,19 @@ public class FloatingToolbar {
 
     private WritableImage snapshotScreen() {
         Rectangle selectionArea = screenshotSelector.getSelectionArea();
+        Scene scene = drawCanvas.getScene();
+        Stage stage = (Stage) scene.getWindow();
+        
+        // 保存窗口的可见状态
+        boolean wasVisible = stage.isShowing();
+        
+        // 临时隐藏整个窗口
+        stage.hide();
+        
+        // 给系统一点时间来更新屏幕
+        try {
+            Thread.sleep(100);
+        } catch (InterruptedException ignored) {}
 
         double x = selectionArea.getX();
         double y = selectionArea.getY();
@@ -463,7 +479,6 @@ public class FloatingToolbar {
             throw new RuntimeException("Failed to create Robot instance", e);
         }
 
-        Scene scene = drawCanvas.getScene();
         Point2D sceneCoords = scene.getRoot().localToScreen(x, y);
 
         java.awt.Rectangle awtRect = new java.awt.Rectangle(
@@ -474,9 +489,15 @@ public class FloatingToolbar {
         );
 
         BufferedImage screenImage = robot.createScreenCapture(awtRect);
+        
+        // 恢复窗口可见性
+        if (wasVisible) {
+            stage.show();
+        }
 
         WritableImage finalImage = new WritableImage((int) width, (int) height);
         SwingFXUtils.toFXImage(screenImage, finalImage);
+
         return finalImage;
     }
 
@@ -571,11 +592,8 @@ public class FloatingToolbar {
     }
 
     private void createSticker() {
-        // 获取当前选区的截图
-        WritableImage image = snapshotScreen();
-        
         // 创建贴图
-        ImageView sticker = new ImageView(image);
+        ImageView sticker = new ImageView(snapshotScreen());
         
         // 设置贴图初始位置（使用选区的位置）
         sticker.setX(selectionArea.getX());
