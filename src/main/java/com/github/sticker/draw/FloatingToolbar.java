@@ -2,6 +2,7 @@ package com.github.sticker.draw;
 
 import com.github.sticker.feature.StickerStage;
 import com.github.sticker.screenshot.ScreenshotSelector;
+import com.github.sticker.util.StealthWindow;
 import javafx.animation.FadeTransition;
 import javafx.beans.binding.Bindings;
 import javafx.embed.swing.SwingFXUtils;
@@ -466,11 +467,6 @@ public class FloatingToolbar {
         
         // 临时隐藏整个窗口
         stage.hide();
-        
-        // 给系统一点时间来更新屏幕
-        try {
-            Thread.sleep(100);
-        } catch (InterruptedException ignored) {}
 
         double x = selectionArea.getX();
         double y = selectionArea.getY();
@@ -632,15 +628,25 @@ public class FloatingToolbar {
         // 创建贴图
         ImageView sticker = new ImageView(snapshotScreen());
         
-        // 设置贴图初始位置（使用选区的位置）
-        sticker.setX(selectionArea.getX());
-        sticker.setY(selectionArea.getY());
+        // 获取选区的屏幕坐标
+        Point2D screenPoint = selectionArea.localToScreen(selectionArea.getX(), selectionArea.getY());
+        
+        // 设置贴图初始大小为选区大小
+        sticker.setFitWidth(selectionArea.getWidth());
+        sticker.setFitHeight(selectionArea.getHeight());
+        
+        // 设置贴图初始位置（使用选区的屏幕坐标）
+        sticker.setLayoutX(screenPoint.getX());
+        sticker.setLayoutY(screenPoint.getY());
+        
+        System.out.println("创建贴图 - 选区位置: (" + selectionArea.getX() + "," + selectionArea.getY() + 
+                         "), 屏幕坐标: (" + screenPoint.getX() + "," + screenPoint.getY() + ")");
         
         // 添加到贴图窗口并显示
         stickerStage.addSticker(sticker);
         stickerStage.show();
         
-        // 关闭截图选择器
+        // 清理截图选择器
         screenshotSelector.cancelSelection();
     }
 }
