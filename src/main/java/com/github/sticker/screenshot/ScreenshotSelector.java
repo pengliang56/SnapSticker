@@ -440,7 +440,7 @@ public class ScreenshotSelector {
             // Clear any existing selection on other screens
             clearOtherScreenSelections(currentScreen);
             
-            magnifier.switchShowMagnifier(event, !(floatingToolbar != null && floatingToolbar.getDrawMode()));
+            magnifier.setVisible(false);  // Hide magnifier when starting selection
             if (!isSelecting) {
                 drawCanvasArea.setStyle(null);
                 stopMouseTracking();
@@ -458,7 +458,7 @@ public class ScreenshotSelector {
         });
 
         scene.setOnMouseDragged(event -> {
-            magnifier.switchShowMagnifier(event, !(floatingToolbar != null && floatingToolbar.getDrawMode()));
+            magnifier.setVisible(false);  // Keep magnifier hidden during drag
             if (!isSelecting) {
                 endX = event.getScreenX();
                 endY = event.getScreenY();
@@ -471,7 +471,7 @@ public class ScreenshotSelector {
                 handleMouseReleased(event);
                 // 检查鼠标是否在选区内
                 boolean isInside = isMouseInSelectionArea(event.getX(), event.getY());
-                magnifier.switchShowMagnifier(event, isInside);
+                magnifier.setVisible(isInside);  // Only show magnifier if inside selection area
                 isSelecting = true;
             }
         });

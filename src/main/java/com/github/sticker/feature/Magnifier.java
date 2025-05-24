@@ -72,6 +72,14 @@ public class Magnifier extends VBox {
     private volatile WritableImage outputBuffer;
     private static final int UPDATE_INTERVAL_MS = 8; // 120 FPS
 
+    private static final Color CHECKER_COLOR1 = Color.rgb(255, 255, 255, 1.0);  // 白色
+    private static final Color CHECKER_COLOR2 = Color.rgb(220, 220, 220, 1.0);  // 浅灰色
+    private static final Color BORDER_COLOR = Color.rgb(30, 109, 235);  // 蓝色边框
+    private static final int CHECKER_SIZE = 2;  // 放大后的2个像素大小
+
+    private boolean isDragging = false;
+    private boolean isOutOfScreen = false;
+
     public Magnifier() throws AWTException {
         this.robot = new Robot();
         robot.setAutoDelay(0);
@@ -330,13 +338,83 @@ public class Magnifier extends VBox {
             int magnifierCenterX = MAG_WIDTH / 2;
             int magnifierCenterY = MAG_HEIGHT / 2;
             
-            // Calculate capture region with precise positioning
-            int captureX = screenX - (int)(magnifierCenterX / zoomLevel);
-            int captureY = screenY - (int)(magnifierCenterY / zoomLevel);
+            // 固定取样区域大小
+            int captureWidth = (int)(MAG_WIDTH / zoomLevel);
+            int captureHeight = (int)(MAG_HEIGHT / zoomLevel);
             
-            // Capture region for better performance
-            lastCapture = robot.createScreenCapture(
-                    new java.awt.Rectangle(captureX, captureY, CAPTURE_SIZE, CAPTURE_SIZE));
+            // 计算取样区域的位置，确保以取样点为中心
+            int captureX = screenX - captureWidth / 2;
+            int captureY = screenY - captureHeight / 2;
+            
+            // 获取屏幕边界
+            javafx.geometry.Rectangle2D screenBounds = javafx.stage.Screen.getPrimary().getBounds();
+            
+            // 检查是否超出屏幕边界
+            isOutOfScreen = captureX < screenBounds.getMinX() || 
+                           captureY < screenBounds.getMinY() ||
+                           captureX + captureWidth > screenBounds.getMaxX() ||
+                           captureY + captureHeight > screenBounds.getMaxY();
+
+            // 计算实际可以从屏幕捕获的区域
+            int validX = Math.max((int)screenBounds.getMinX(), captureX);
+            int validY = Math.max((int)screenBounds.getMinY(), captureY);
+            int validWidth = Math.min(captureWidth, (int)screenBounds.getWidth() - (validX - (int)screenBounds.getMinX()));
+            int validHeight = Math.min(captureHeight, (int)screenBounds.getHeight() - (validY - (int)screenBounds.getMinY()));
+
+            // 创建一个和捕获区域大小相同的缓冲区
+            BufferedImage finalCapture = new BufferedImage(captureWidth, captureHeight, BufferedImage.TYPE_INT_ARGB);
+            Graphics2D g2d = finalCapture.createGraphics();
+
+            // 如果有可见的屏幕区域，先捕获它
+            if (validWidth > 0 && validHeight > 0) {
+                // 计算实际的屏幕坐标
+                java.awt.Rectangle screenRect = new java.awt.Rectangle(
+                    validX,
+                    validY,
+                    validWidth,
+                    validHeight
+                );
+                
+                // 捕获可见的屏幕区域
+                BufferedImage screenCapture = robot.createScreenCapture(screenRect);
+                
+                // 计算在finalCapture中的绘制位置
+                int drawX = validX - captureX;
+                int drawY = validY - captureY;
+                
+                // 绘制捕获的屏幕内容
+                g2d.drawImage(screenCapture, drawX, drawY, null);
+            }
+
+            // 绘制棋盘格（只在超出屏幕的区域）
+            if (isOutOfScreen) {
+                // 左边超出部分
+                if (captureX < screenBounds.getMinX()) {
+                    int outWidth = (int)(screenBounds.getMinX() - captureX);
+                    drawCheckerPattern(g2d, 0, 0, outWidth, captureHeight);
+                }
+                
+                // 右边超出部分
+                if (captureX + captureWidth > screenBounds.getMaxX()) {
+                    int startX = (int)(screenBounds.getMaxX() - captureX);
+                    drawCheckerPattern(g2d, startX, 0, captureWidth - startX, captureHeight);
+                }
+                
+                // 上边超出部分
+                if (captureY < screenBounds.getMinY()) {
+                    int outHeight = (int)(screenBounds.getMinY() - captureY);
+                    drawCheckerPattern(g2d, 0, 0, captureWidth, outHeight);
+                }
+                
+                // 下边超出部分
+                if (captureY + captureHeight > screenBounds.getMaxY()) {
+                    int startY = (int)(screenBounds.getMaxY() - captureY);
+                    drawCheckerPattern(g2d, 0, startY, captureWidth, captureHeight - startY);
+                }
+            }
+
+            g2d.dispose();
+            lastCapture = finalCapture;
 
             // Get next buffer
             currentBufferIndex = (currentBufferIndex + 1) % BUFFER_COUNT;
@@ -344,10 +422,9 @@ public class Magnifier extends VBox {
             PixelWriter writer = output.getPixelWriter();
             
             // Convert and scale the image efficiently
-            BufferedImage capture = lastCapture;
-            if (capture != null) {
+            if (lastCapture != null) {
                 // Get raw pixels for faster processing
-                int[] pixels = capture.getRGB(0, 0, CAPTURE_SIZE, CAPTURE_SIZE, null, 0, CAPTURE_SIZE);
+                int[] pixels = lastCapture.getRGB(0, 0, captureWidth, captureHeight, null, 0, captureWidth);
                 
                 // Update UI on JavaFX thread
                 javafx.application.Platform.runLater(() -> {
@@ -355,37 +432,57 @@ public class Magnifier extends VBox {
                         GraphicsContext backGC = backBuffer.getGraphicsContext2D();
                         backGC.clearRect(0, 0, MAG_WIDTH, MAG_HEIGHT);
                         
-                        // Scale and draw captured image with precise sampling
+                        // 先绘制背景和边框
+                        backGC.setFill(Color.BLACK);
+                        backGC.fillRect(1, 1, MAG_WIDTH - 2, MAG_HEIGHT - 2);
+                        
+                        // 在边框内部绘制图像
+                        backGC.save();
+                        backGC.beginPath();
+                        backGC.rect(1, 1, MAG_WIDTH - 2, MAG_HEIGHT - 2);
+                        backGC.clip();
+                        
+                        // Scale and draw captured image
                         for (int y = 0; y < MAG_HEIGHT; y++) {
                             for (int x = 0; x < MAG_WIDTH; x++) {
-                                // Calculate source pixel position with precise offset
-                                double srcX = x / zoomLevel;
-                                double srcY = y / zoomLevel;
+                                int sourceX = (int)(x / zoomLevel);
+                                int sourceY = (int)(y / zoomLevel);
                                 
-                                // Convert to integer coordinates
-                                int pixelX = (int)srcX;
-                                int pixelY = (int)srcY;
-                                
-                                if (pixelX >= 0 && pixelX < CAPTURE_SIZE && pixelY >= 0 && pixelY < CAPTURE_SIZE) {
-                                    int pixel = pixels[pixelY * CAPTURE_SIZE + pixelX];
+                                if (sourceX >= 0 && sourceX < captureWidth && sourceY >= 0 && sourceY < captureHeight) {
+                                    int pixel = pixels[sourceY * captureWidth + sourceX];
                                     writer.setArgb(x, y, pixel);
                                 }
                             }
                         }
                         
                         backGC.setImageSmoothing(false);
-                        backGC.drawImage(output, 0, 0);
+                        backGC.drawImage(output, 1, 1, MAG_WIDTH - 2, MAG_HEIGHT - 2);
+                        backGC.restore();
                         
                         // Draw crosshair at exact center
                         drawCrosshair(backGC, magnifierCenterX, magnifierCenterY);
 
-                        // Draw white border
-                        backGC.setStroke(Color.WHITE);
-                        backGC.setLineWidth(1);
-                        backGC.setLineCap(javafx.scene.shape.StrokeLineCap.SQUARE);
-                        backGC.setLineJoin(javafx.scene.shape.StrokeLineJoin.MITER);
-                        backGC.setMiterLimit(10);
-                        backGC.strokeRect(0.5, 0.5, MAG_WIDTH - 1, MAG_HEIGHT - 1);
+                        // Draw border with single pixel width
+                        Color borderColor = isOutOfScreen ? BORDER_COLOR : Color.WHITE;
+                        backGC.setStroke(borderColor);
+                        backGC.setLineWidth(1.0);
+                        backGC.setGlobalAlpha(1.0);
+                        
+                        // Draw the border using moveTo and lineTo for precise control
+                        backGC.beginPath();
+                        // Top line
+                        backGC.moveTo(0, 0.5);
+                        backGC.lineTo(MAG_WIDTH, 0.5);
+                        // Right line
+                        backGC.moveTo(MAG_WIDTH - 0.5, 0);
+                        backGC.lineTo(MAG_WIDTH - 0.5, MAG_HEIGHT);
+                        // Bottom line
+                        backGC.moveTo(MAG_WIDTH, MAG_HEIGHT - 0.5);
+                        backGC.lineTo(0, MAG_HEIGHT - 0.5);
+                        // Left line
+                        backGC.moveTo(0.5, MAG_HEIGHT);
+                        backGC.lineTo(0.5, 0);
+                        backGC.stroke();
                         
                         // Swap buffers
                         GraphicsContext frontGC = magnifierCanvas.getGraphicsContext2D();
@@ -452,6 +549,21 @@ public class Magnifier extends VBox {
     public void dispose() {
         if (updateExecutor != null) {
             updateExecutor.shutdown();
+        }
+    }
+
+    private void drawCheckerPattern(Graphics2D g2d, int x, int y, int width, int height) {
+        for (int py = y; py < y + height; py += CHECKER_SIZE) {
+            for (int px = x; px < x + width; px += CHECKER_SIZE) {
+                g2d.setColor(((px / CHECKER_SIZE + py / CHECKER_SIZE) % 2 == 0) ? 
+                    new java.awt.Color((float)CHECKER_COLOR1.getRed(), 
+                                     (float)CHECKER_COLOR1.getGreen(), 
+                                     (float)CHECKER_COLOR1.getBlue()) :
+                    new java.awt.Color((float)CHECKER_COLOR2.getRed(), 
+                                     (float)CHECKER_COLOR2.getGreen(), 
+                                     (float)CHECKER_COLOR2.getBlue()));
+                g2d.fillRect(px, py, CHECKER_SIZE, CHECKER_SIZE);
+            }
         }
     }
 }
