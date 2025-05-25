@@ -10,6 +10,7 @@ import javafx.geometry.Rectangle2D;
 import javafx.scene.CacheHint;
 import javafx.scene.Cursor;
 import javafx.scene.Scene;
+import javafx.scene.Node;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
@@ -45,6 +46,13 @@ public class StickerStage {
     private Pane root;
     private Rectangle2D totalBounds;
     private ContextMenu contextMenu;
+    
+    // 菜单项
+    private Menu sizeMenu;
+    private CheckMenuItem shownItem;
+    private MenuItem opacityItem;
+    private MenuItem rotationItem;
+    private MenuItem invertedItem;
 
     public static StickerStage getInstance() {
         if (instance == null) {
@@ -211,18 +219,39 @@ public class StickerStage {
         MenuItem saveItem = new MenuItem("Save image as...");
         MenuItem pasteItem = new MenuItem("Paste");
         MenuItem replaceItem = new MenuItem("Replace by file...");
-        MenuItem resetScaleItem = new MenuItem("Reset to 100%");
+        // 创建缩放菜单
+        Menu zoomMenu = new Menu("Zoom");
+        
+        // 第一组：预设缩放比例
+        MenuItem zoom33Item = new MenuItem("33.3%");
+        MenuItem zoom50Item = new MenuItem("50%");
+        MenuItem zoom100Item = new MenuItem("100%");
+        MenuItem zoom200Item = new MenuItem("200%");
+        
+        // 第二组：当前缩放和平滑选项
+        MenuItem currentZoomItem = new MenuItem("100%    Current");
+        currentZoomItem.setDisable(true);  // 禁用当前缩放项（仅用于显示）
+        CheckMenuItem smoothingItem = new CheckMenuItem("Smoothing");
+        smoothingItem.setSelected(true);   // 默认选中
+        smoothingItem.setDisable(true);    // 暂时禁用
+
+        // 添加分隔符和所有项目
+        zoomMenu.getItems().addAll(
+            zoom33Item, zoom50Item, zoom100Item, zoom200Item,
+            new SeparatorMenuItem(),
+            currentZoomItem, smoothingItem
+        );
         MenuItem viewFolderItem = new MenuItem("View in folder");
         MenuItem closeItem = new MenuItem("Close and save");
         MenuItem destroyItem = new MenuItem("Destroy");
-        CheckMenuItem shownItem = new CheckMenuItem("Shadow");
+        shownItem = new CheckMenuItem("Shadow");
 
         // 创建贴图大小和属性菜单
-        Menu sizeMenu = new Menu();  // 使用Menu替代MenuItem，作为属性的父菜单
+        sizeMenu = new Menu();  // 使用Menu替代MenuItem，作为属性的父菜单
         MenuItem zoomItem = new MenuItem("Zoom: 100%");
-        MenuItem rotationItem = new MenuItem("Rotation: 0°");
-        MenuItem opacityItem = new MenuItem("Opacity: 100%");
-        MenuItem invertedItem = new MenuItem("Color inverted: No");
+        rotationItem = new MenuItem("Rotation: 0°");
+        opacityItem = new MenuItem("Opacity: 100%");
+        invertedItem = new MenuItem("Color inverted: No");
         sizeMenu.getItems().addAll(zoomItem, rotationItem, opacityItem, invertedItem);
 
         // 设置菜单项样式
@@ -237,6 +266,46 @@ public class StickerStage {
         rotationItem.setDisable(true);
         opacityItem.setDisable(true);
         invertedItem.setDisable(true);
+
+        // 设置缩放菜单事件处理
+        zoom33Item.setOnAction(e -> {
+            if (e.getTarget() instanceof MenuItem menuItem) {
+                if (menuItem.getParentMenu().getParentPopup().getOwnerNode() instanceof ImageView sticker) {
+                    applyZoom(sticker, 0.333);
+                    contextMenu.hide();
+                }
+            }
+        });
+
+        zoom50Item.setOnAction(e -> {
+            if (e.getTarget() instanceof MenuItem menuItem) {
+                if (menuItem.getParentMenu().getParentPopup().getOwnerNode() instanceof ImageView sticker) {
+                    applyZoom(sticker, 0.5);
+                    contextMenu.hide();
+                }
+            }
+        });
+
+        zoom100Item.setOnAction(e -> {
+            if (e.getTarget() instanceof MenuItem menuItem) {
+                if (menuItem.getParentMenu().getParentPopup().getOwnerNode() instanceof ImageView sticker) {
+                    applyZoom(sticker, 1.0);
+                    contextMenu.hide();
+                }
+            }
+        });
+
+        zoom200Item.setOnAction(e -> {
+            if (e.getTarget() instanceof MenuItem menuItem) {
+                if (menuItem.getParentMenu().getParentPopup().getOwnerNode() instanceof ImageView sticker) {
+                    applyZoom(sticker, 2.0);
+                    contextMenu.hide();
+                }
+            }
+        });
+
+        // 禁用当前缩放项（仅用于显示）
+        currentZoomItem.setDisable(true);
 
         // 设置菜单项事件处理
         copyItem.setOnAction(e -> {
@@ -260,21 +329,7 @@ public class StickerStage {
             }
         });
 
-        resetScaleItem.setOnAction(e -> {
-            if (e.getTarget() instanceof MenuItem menuItem) {
-                if (menuItem.getParentPopup().getOwnerNode() instanceof ImageView sticker) {
-                    // 获取原始图片尺寸
-                    double originalWidth = sticker.getImage().getWidth();
-                    double originalHeight = sticker.getImage().getHeight();
 
-                    // 重置为原始大小
-                    sticker.setFitWidth(originalWidth);
-                    sticker.setFitHeight(originalHeight);
-
-                    contextMenu.hide(); // 操作完成后隐藏菜单
-                }
-            }
-        });
 
         viewFolderItem.setOnAction(e -> {
             try {
@@ -440,53 +495,12 @@ public class StickerStage {
 
         contextMenu.getItems().addAll(
                 copyItem, saveItem, new SeparatorMenuItem(),
-                resetScaleItem, new SeparatorMenuItem(),
+                zoomMenu, new SeparatorMenuItem(),
                 pasteItem, replaceItem, new SeparatorMenuItem(),
                 shownItem, new SeparatorMenuItem(),
                 viewFolderItem, closeItem, destroyItem, new SeparatorMenuItem(),
                 sizeMenu
         );
-
-        // 添加菜单显示和隐藏的监听器
-        contextMenu.setOnShowing(e -> {
-            stage.requestFocus(); // 确保窗口获得焦点
-            if (contextMenu.getOwnerNode() instanceof ImageView sticker) {
-                // 更新Shadow选中状态
-                Object shadowValue = sticker.getProperties().get("shadow");
-                boolean isShown = shadowValue instanceof Boolean && (Boolean) shadowValue;
-                shownItem.setSelected(isShown);
-
-                // 更新尺寸信息
-                int width = (int) sticker.getFitWidth();
-                int height = (int) sticker.getFitHeight();
-                if (width == 0 || height == 0) {
-                    // 如果FitWidth/FitHeight为0，使用原始图片尺寸
-                    width = (int) sticker.getImage().getWidth();
-                    height = (int) sticker.getImage().getHeight();
-                }
-                sizeMenu.setText(String.format("%d × %d", width, height));
-
-                // 计算缩放比例
-                double originalWidth = sticker.getImage().getWidth();
-                double currentWidth = sticker.getFitWidth();
-                double scale = currentWidth == 0 ? 1.0 : (currentWidth / originalWidth);
-                int zoomPercentage = (int) (scale * 100);
-                zoomItem.setText(String.format("Zoom: %d%%", zoomPercentage));
-
-                // 更新其他属性
-                double opacity = sticker.getOpacity();
-                int opacityPercentage = (int) (opacity * 100);
-                opacityItem.setText(String.format("Opacity: %d%%", opacityPercentage));
-
-                // 获取旋转角度
-                double rotation = sticker.getRotate();
-                rotationItem.setText(String.format("Rotation: %.1f°", rotation));
-
-                // 检查是否有颜色反转效果
-                boolean isInverted = sticker.getEffect() instanceof ColorAdjust;
-                invertedItem.setText("Color inverted: " + (isInverted ? "Yes" : "No"));
-            }
-        });
     }
 
     private void saveImage(Image image) {
@@ -552,7 +566,8 @@ public class StickerStage {
     }
 
     public void addSticker(ImageView sticker) {
-        sticker.getProperties().put("shadow", true);
+        // 设置shadow属性为true
+        sticker.getProperties().put("shadow", Boolean.TRUE);
         setupStickerEffect(sticker);
         setupStickerBehavior(sticker);
         root.getChildren().add(sticker);
@@ -746,6 +761,11 @@ public class StickerStage {
             isContextMenuShowing[0] = true;
             // 更新尺寸显示
             updateStickerSize(sticker);
+
+            stage.requestFocus(); // 确保窗口获得焦点
+            if (contextMenu.getOwnerNode() instanceof ImageView stickerTemp) {
+                updateContextMenuItems(stickerTemp);
+            }
         });
 
         contextMenu.setOnHiding(e -> {
@@ -805,36 +825,132 @@ public class StickerStage {
             double width = sticker.getBoundsInLocal().getWidth();
             double height = sticker.getBoundsInLocal().getHeight();
             
-            // 获取原始图片尺寸
-            double originalWidth = sticker.getImage().getWidth();
-            double originalHeight = sticker.getImage().getHeight();
-            
             // 如果尺寸为0，使用原始图片尺寸
             if (width == 0 || height == 0) {
-                width = originalWidth;
-                height = originalHeight;
+                width = sticker.getImage().getWidth();
+                height = sticker.getImage().getHeight();
             }
             
-            // 计算缩放比例（使用宽度比例，因为图片保持比例缩放）
-            double scale = width / originalWidth;
-            int zoomPercentage = (int) Math.round(scale * 100);
+            // 计算缩放比例
+            double scale = calculateScale(sticker);
             
             // 更新菜单显示
             for (MenuItem item : contextMenu.getItems()) {
-                if (item instanceof Menu menu && (menu.getText().isEmpty() || menu.getText().matches("\\d+ × \\d+"))) {
+                if (item instanceof Menu menu) {
                     // 更新尺寸显示
-                    menu.setText(String.format("%d × %d", Math.round(width), Math.round(height)));
-                    
-                    // 更新Zoom属性
-                    for (MenuItem subItem : menu.getItems()) {
-                        String itemText = subItem.getText();
-                        if (itemText != null && itemText.startsWith("Zoom:")) {
-                            subItem.setText(String.format("Zoom: %d%%", zoomPercentage));
-                            break;
+                    if (menu.getText().isEmpty() || menu.getText().matches("\\d+ × \\d+")) {
+                        menu.setText(String.format("%d × %d", Math.round(width), Math.round(height)));
+                        
+                        // 更新属性菜单中的Zoom项
+                        for (MenuItem subItem : menu.getItems()) {
+                            if (subItem.getText() != null && subItem.getText().startsWith("Zoom:")) {
+                                subItem.setText("Zoom: " + formatScale(scale));
+                                break;
+                            }
                         }
                     }
-                    break;
+                    // 更新Zoom菜单中的Current项
+                    else if ("Zoom".equals(menu.getText())) {
+                        for (MenuItem subItem : menu.getItems()) {
+                            if (subItem.getText() != null && subItem.getText().contains("Current")) {
+                                subItem.setText(formatScale(scale) + "    Current");
+                                break;
+                            }
+                        }
+                    }
                 }
+            }
+        }
+    }
+
+    // 应用缩放的辅助方法
+    private void applyZoom(ImageView sticker, double scale) {
+        // 获取原始图片尺寸
+        double originalWidth = sticker.getImage().getWidth();
+        double originalHeight = sticker.getImage().getHeight();
+
+        // 清除任何之前的变换
+        sticker.setScaleX(1.0);
+        sticker.setScaleY(1.0);
+
+        // 应用新的缩放
+        sticker.setFitWidth(originalWidth * scale);
+        sticker.setFitHeight(originalHeight * scale);
+        sticker.setPreserveRatio(true);
+
+        // 更新当前缩放显示
+        updateCurrentZoom(sticker, scale);
+
+        // 显示缩放标签
+        showScaleLabel(sticker, scale);
+    }
+
+    private void showScaleLabel(ImageView sticker, double scale) {
+        // 创建或获取标签
+        Label existingLabel = null;
+        for (Node node : root.getChildren()) {
+            if (node instanceof Label label && label.getProperties().containsKey("scale_label") 
+                && label.getProperties().get("owner") == sticker) {
+                existingLabel = label;
+                break;
+            }
+        }
+
+        // 创建或使用现有标签
+        final Label scaleLabel;
+        if (existingLabel != null) {
+            scaleLabel = existingLabel;
+        } else {
+            scaleLabel = new Label();
+            scaleLabel.getProperties().put("scale_label", true);
+            scaleLabel.getProperties().put("owner", sticker);
+            scaleLabel.setStyle("-fx-background-color: rgba(255, 255, 255, 0.8);" +
+                    "-fx-text-fill: black;" +
+                    "-fx-padding: 2 8;" +
+                    "-fx-background-radius: 3;" +
+                    "-fx-border-radius: 3;" +
+                    "-fx-border-color: rgba(204, 204, 204, 0.8);" +
+                    "-fx-border-width: 1;" +
+                    "-fx-font-size: 12px;" +
+                    "-fx-font-weight: bold;");
+            scaleLabel.setFont(Font.font("System", FontWeight.BOLD, 12));
+            scaleLabel.setCursor(Cursor.HAND);
+            scaleLabel.setMouseTransparent(true);  // 禁用标签的事件响应
+            root.getChildren().add(scaleLabel);
+
+            // 绑定位置到贴图上方
+            scaleLabel.layoutXProperty().bind(sticker.layoutXProperty());
+            scaleLabel.layoutYProperty().bind(sticker.layoutYProperty().subtract(25));
+        }
+
+        // 更新标签文本和显示状态
+        scaleLabel.setText(formatScale(scale));
+        scaleLabel.setVisible(true);
+        scaleLabel.setOpacity(1.0);
+
+        // 创建淡出动画
+        FadeTransition fadeOut = new FadeTransition(Duration.seconds(0.5), scaleLabel);
+        fadeOut.setFromValue(1.0);
+        fadeOut.setToValue(0.0);
+        fadeOut.setOnFinished(e -> scaleLabel.setVisible(false));
+
+        // 5秒后开始淡出
+        Timeline hideTimer = new Timeline(new KeyFrame(Duration.seconds(5), e -> fadeOut.play()));
+        hideTimer.play();
+    }
+
+    // 更新当前缩放显示
+    private void updateCurrentZoom(ImageView sticker, double scale) {
+        for (MenuItem item : contextMenu.getItems()) {
+            if (item instanceof Menu menu && "Zoom".equals(menu.getText())) {
+                for (MenuItem subItem : menu.getItems()) {
+                    String itemText = subItem.getText();
+                    if (itemText != null && itemText.contains("Current")) {
+                        subItem.setText(formatScale(scale) + "    Current");
+                        break;
+                    }
+                }
+                break;
             }
         }
     }
@@ -842,5 +958,68 @@ public class StickerStage {
     // 用于记录拖拽过程中的偏移量
     private static class Delta {
         double x, y;
+    }
+
+    // 更新菜单显示的统一方法
+    private void updateContextMenuItems(ImageView sticker) {
+        // 更新Shadow选中状态
+        Object shadowValue = sticker.getProperties().get("shadow");
+        boolean isShown = shadowValue instanceof Boolean ? (Boolean) shadowValue : true; // 默认为true
+        shownItem.setSelected(isShown);
+
+        // 更新尺寸信息
+        int width = (int) sticker.getFitWidth();
+        int height = (int) sticker.getFitHeight();
+        if (width == 0 || height == 0) {
+            // 如果FitWidth/FitHeight为0，使用原始图片尺寸
+            width = (int) sticker.getImage().getWidth();
+            height = (int) sticker.getImage().getHeight();
+        }
+        sizeMenu.setText(String.format("%d × %d", width, height));
+
+        // 计算缩放比例
+        double scale = calculateScale(sticker);
+        
+        // 更新当前缩放显示
+        for (MenuItem item : contextMenu.getItems()) {
+            if (item instanceof Menu menu && "Zoom".equals(menu.getText())) {
+                for (MenuItem subItem : menu.getItems()) {
+                    String itemText = subItem.getText();
+                    if (itemText != null && itemText.contains("Current")) {
+                        subItem.setText(String.format("%.1f%%         Current", scale * 100));
+                        break;
+                    }
+                }
+                break;
+            }
+        }
+
+        // 更新其他属性
+        double opacity = sticker.getOpacity();
+        int opacityPercentage = (int) (opacity * 100);
+        opacityItem.setText(String.format("Opacity: %d%%", opacityPercentage));
+
+        // 获取旋转角度
+        double rotation = sticker.getRotate();
+        rotationItem.setText(String.format("Rotation: %.1f°", rotation));
+
+        // 检查是否有颜色反转效果
+        boolean isInverted = sticker.getEffect() instanceof ColorAdjust;
+        invertedItem.setText("Color inverted: " + (isInverted ? "Yes" : "No"));
+    }
+
+    // 统一计算缩放比例的方法
+    private double calculateScale(ImageView sticker) {
+        if (sticker.getFitWidth() > 0) {
+            // 使用设置的适应宽度来计算比例
+            return sticker.getFitWidth() / sticker.getImage().getWidth();
+        }
+        // 使用实际显示尺寸计算比例
+        return sticker.getBoundsInLocal().getWidth() / sticker.getImage().getWidth();
+    }
+
+    // 格式化缩放比例显示
+    private String formatScale(double scale) {
+        return String.format("%.0f%%", scale * 100);
     }
 } 
