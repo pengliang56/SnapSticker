@@ -238,10 +238,8 @@ public class StickerStage {
 
         // 设置菜单项事件处理
         copyItem.setOnAction(e -> {
-            if (e.getTarget() instanceof MenuItem) {
-                MenuItem menuItem = (MenuItem) e.getTarget();
-                if (menuItem.getParentPopup().getOwnerNode() instanceof ImageView) {
-                    ImageView sticker = (ImageView) menuItem.getParentPopup().getOwnerNode();
+            if (e.getTarget() instanceof MenuItem menuItem) {
+                if (menuItem.getParentPopup().getOwnerNode() instanceof ImageView sticker) {
                     Clipboard clipboard = Clipboard.getSystemClipboard();
                     ClipboardContent content = new ClipboardContent();
                     content.putImage(sticker.getImage());
@@ -252,10 +250,8 @@ public class StickerStage {
         });
 
         saveItem.setOnAction(e -> {
-            if (e.getTarget() instanceof MenuItem) {
-                MenuItem menuItem = (MenuItem) e.getTarget();
-                if (menuItem.getParentPopup().getOwnerNode() instanceof ImageView) {
-                    ImageView sticker = (ImageView) menuItem.getParentPopup().getOwnerNode();
+            if (e.getTarget() instanceof MenuItem menuItem) {
+                if (menuItem.getParentPopup().getOwnerNode() instanceof ImageView sticker) {
                     saveImage(sticker.getImage());
                     contextMenu.hide(); // 操作完成后隐藏菜单
                 }
@@ -263,10 +259,8 @@ public class StickerStage {
         });
 
         pasteItem.setOnAction(e -> {
-            if (e.getTarget() instanceof MenuItem) {
-                MenuItem menuItem = (MenuItem) e.getTarget();
-                if (menuItem.getParentPopup().getOwnerNode() instanceof ImageView) {
-                    ImageView sticker = (ImageView) menuItem.getParentPopup().getOwnerNode();
+            if (e.getTarget() instanceof MenuItem menuItem) {
+                if (menuItem.getParentPopup().getOwnerNode() instanceof ImageView sticker) {
                     Clipboard clipboard = Clipboard.getSystemClipboard();
                     if (clipboard.hasImage()) {
                         // 只保存当前位置
@@ -292,10 +286,8 @@ public class StickerStage {
         });
 
         closeItem.setOnAction(e -> {
-            if (e.getTarget() instanceof MenuItem) {
-                MenuItem menuItem = (MenuItem) e.getTarget();
-                if (menuItem.getParentPopup().getOwnerNode() instanceof ImageView) {
-                    ImageView sticker = (ImageView) menuItem.getParentPopup().getOwnerNode();
+            if (e.getTarget() instanceof MenuItem menuItem) {
+                if (menuItem.getParentPopup().getOwnerNode() instanceof ImageView sticker) {
                     root.getChildren().remove(sticker);
                     contextMenu.hide(); // 操作完成后隐藏菜单
                 }
@@ -466,11 +458,9 @@ public class StickerStage {
 
         // 初始状态播放一次呼吸动画并请求焦点
         breathingAnimation.play();
-        sticker.requestFocus();
     }
 
     private void setupStickerBehavior(ImageView sticker) {
-        final Delta dragDelta = new Delta();
         final double MIN_SCALE = 0.1;
         final double MAX_SCALE = 10.0;
         
