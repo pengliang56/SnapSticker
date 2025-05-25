@@ -14,6 +14,7 @@ import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.SeparatorMenuItem;
+import javafx.scene.control.CheckMenuItem;
 import javafx.scene.effect.DropShadow;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -207,11 +208,12 @@ public class StickerStage {
         MenuItem copyItem = new MenuItem("Copy image");
         MenuItem saveItem = new MenuItem("Save image as...");
         MenuItem pasteItem = new MenuItem("Paste");
+        MenuItem replaceItem = new MenuItem("Replace by file...");
         MenuItem resetScaleItem = new MenuItem("Reset to 100%");
         MenuItem viewFolderItem = new MenuItem("View in folder");
         MenuItem closeItem = new MenuItem("Close and save");
         MenuItem destroyItem = new MenuItem("Destroy");
-        MenuItem replaceItem = new MenuItem("Replace by file...");
+        CheckMenuItem shownItem = new CheckMenuItem("Shadow");
 
         // 设置菜单项事件处理
         copyItem.setOnAction(e -> {
@@ -387,16 +389,48 @@ public class StickerStage {
             }
         });
 
+        // 添加呼吸灯控制的事件处理
+        shownItem.setOnAction(e -> {
+            if (e.getTarget() instanceof CheckMenuItem menuItem) {
+                if (menuItem.getParentPopup().getOwnerNode() instanceof ImageView sticker) {
+                    boolean isShown = menuItem.isSelected();
+                    sticker.getProperties().put("shadow", isShown);
+                    
+                    // 获取当前效果
+                    DropShadow effect = (DropShadow) sticker.getEffect();
+                    if (effect != null) {
+                        if (isShown) {
+                            // 如果是激活状态，显示正常效果
+                            if (sticker.isFocused()) {
+                                effect.setColor(Color.rgb(102, 178, 255, 0.8));
+                            } else {
+                                effect.setColor(Color.rgb(255, 255, 255, 0.3));
+                            }
+                        } else {
+                            // 如果是关闭状态，隐藏效果
+                            effect.setColor(Color.TRANSPARENT);
+                        }
+                    }
+                }
+            }
+        });
+
         contextMenu.getItems().addAll(
                 copyItem, saveItem, new SeparatorMenuItem(),
                 resetScaleItem, new SeparatorMenuItem(),
                 pasteItem, replaceItem, new SeparatorMenuItem(),
+                shownItem, new SeparatorMenuItem(),
                 viewFolderItem, closeItem, destroyItem
         );
 
         // 添加菜单显示和隐藏的监听器
         contextMenu.setOnShowing(e -> {
             stage.requestFocus(); // 确保窗口获得焦点
+            if (contextMenu.getOwnerNode() instanceof ImageView sticker) {
+                Object shadowValue = sticker.getProperties().get("shadow");
+                boolean isShown = shadowValue instanceof Boolean && (Boolean) shadowValue;
+                shownItem.setSelected(isShown);
+            }
         });
     }
 
@@ -463,6 +497,7 @@ public class StickerStage {
     }
 
     public void addSticker(ImageView sticker) {
+        sticker.getProperties().put("shadow", true);
         setupStickerEffect(sticker);
         setupStickerBehavior(sticker);
         root.getChildren().add(sticker);
@@ -487,6 +522,9 @@ public class StickerStage {
         borderEffect.setColor(activeColor);
         sticker.setEffect(borderEffect);
 
+        // 为贴图添加shadow属性，默认为true
+        sticker.getProperties().put("shadow", true);
+
         // 创建初始呼吸灯动画
         Timeline breathingAnimation = new Timeline(
                 new KeyFrame(Duration.ZERO,
@@ -503,37 +541,50 @@ public class StickerStage {
 
         // 动画结束后保持高亮状态
         breathingAnimation.setOnFinished(e -> {
-            borderEffect.setRadius(10);
-            borderEffect.setColor(activeColor);
+            if (Boolean.TRUE.equals(sticker.getProperties().get("shadow"))) {
+                borderEffect.setRadius(10);
+                borderEffect.setColor(activeColor);
+            } else {
+                borderEffect.setRadius(10);
+                borderEffect.setColor(dimColor);
+            }
         });
 
         // 确保贴图可以接收鼠标事件和焦点
         sticker.setPickOnBounds(true);
         sticker.setFocusTraversable(true);
 
-        // 添加焦点变化监听
+        // 修改焦点变化监听
         sticker.focusedProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal) {  // 获得焦点
-                borderEffect.setRadius(10);
-                borderEffect.setColor(activeColor);
+                if (Boolean.TRUE.equals(sticker.getProperties().get("shadow"))) {
+                    borderEffect.setRadius(10);
+                    borderEffect.setColor(activeColor);
+                }
 
                 // 将贴图移到最前面
                 sticker.toFront();
 
                 // 将其他贴图设置为非活跃状态
                 root.getChildren().forEach(node -> {
-                    if (node instanceof ImageView && node != sticker) {
-                        ImageView otherSticker = (ImageView) node;
+                    if (node instanceof ImageView otherSticker && node != sticker) {
                         DropShadow effect = (DropShadow) otherSticker.getEffect();
-                        if (effect != null) {
-                            effect.setColor(dimColor);
-                            effect.setRadius(10);
+                        if (Boolean.TRUE.equals(otherSticker.getProperties().get("shadow"))) {
+                            if (effect != null) {
+                                effect.setColor(dimColor);
+                                effect.setRadius(10);
+                            }
                         }
                     }
                 });
             } else {  // 失去焦点
-                borderEffect.setRadius(10);
-                borderEffect.setColor(dimColor);
+                if (Boolean.TRUE.equals(sticker.getProperties().get("shadow"))) {
+                    borderEffect.setRadius(10);
+                    borderEffect.setColor(dimColor);
+                } else {
+                    borderEffect.setRadius(10);
+                    borderEffect.setColor(Color.TRANSPARENT);
+                }
             }
         });
 
