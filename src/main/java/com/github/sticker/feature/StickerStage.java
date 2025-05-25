@@ -244,9 +244,9 @@ public class StickerStage {
         MenuItem saveItem = new MenuItem("Save image as...");
         MenuItem pasteItem = new MenuItem("Paste");
         MenuItem resetScaleItem = new MenuItem("Reset to 100%");
-        MenuItem viewFolderItem = new MenuItem("View in history folder");
-        MenuItem closeItem = new MenuItem("Close and save to history");
-        MenuItem destroyItem = new MenuItem("Destroy this sticker");
+        MenuItem viewFolderItem = new MenuItem("View in folder");
+        MenuItem closeItem = new MenuItem("Close and save");
+        MenuItem destroyItem = new MenuItem("Destroy");
 
         // 设置菜单项事件处理
         copyItem.setOnAction(e -> {

@@ -68,9 +68,6 @@ public class ScreenshotSelector {
     private static final Duration TRACK_INTERVAL = Duration.millis(16); // ~60fps
     private final ScheduledExecutorService updateExecutor;
 
-    // Custom cursor
-    private static final ImageCursor customCursor = createCustomCursor();
-
     // Screen and taskbar bounds
     private Rectangle2D currentScreenBounds;
     private Rectangle2D taskbarBounds;
@@ -126,15 +123,15 @@ public class ScreenshotSelector {
             root.setStyle("-fx-background-color: transparent;");
 
             Scene scene = new Scene(root, bounds.getWidth(), bounds.getHeight());
-            scene.setFill(Color.rgb(0, 0, 0, 0.01));
-            scene.setCursor(createDirectionalCursor(Icon.point));
+            scene.setFill(Color.rgb(0, 0, 0, 0.00));
+
             scene.getStylesheets().add(
                     Objects.requireNonNull(getClass().getResource("/styles/index.css")).toExternalForm()
             );
 
             stage.setScene(scene);
             StealthWindow.configure(stage);
-            
+            stage.show();
             screenStages.put(screen, stage);
         }
     }
@@ -161,7 +158,10 @@ public class ScreenshotSelector {
 
         // Get the cached stage for current screen
         selectorStage = screenStages.get(currentScreen);
+        //scene.setFill(Color.rgb(0, 0, 0, 0.01));
+
         Scene scene = selectorStage.getScene();
+        scene.setFill(Color.rgb(0, 0, 0, 0.01));
         scene.setCursor(createDirectionalCursor(Icon.point));
         root = (Pane) scene.getRoot();
         root.getChildren().clear();
@@ -177,7 +177,7 @@ public class ScreenshotSelector {
         initializeMouseTracking();
 
         // Show the stage for current screen
-        selectorStage.show();
+        //selectorStage.show();
 
         // Get initial mouse position and show magnifier
         Point mousePos = MouseInfo.getPointerInfo().getLocation();
@@ -452,7 +452,7 @@ public class ScreenshotSelector {
                 if (selectionArea == null) {
                     selectionArea = createSelectionMask();
                     root.getChildren().add(selectionArea);
-                    createCornerAndMidpointMarkers();
+                    //createCornerAndMidpointMarkers();
                 }
             }
         });
@@ -510,18 +510,9 @@ public class ScreenshotSelector {
             root.getChildren().remove(floatingToolbar.getToolbar());
             floatingToolbar = null;
         }
-        
-        // 在创建工具栏之前先隐藏放大镜
-        magnifier.setVisible(false);
-        
+
+        magnifier.update((int) event.getScreenX(), (int) event.getScreenY());
         floatingToolbar = new FloatingToolbar(selectionArea, root, drawCanvasArea, this);
-        
-        // 检查鼠标是否在选区内，如果在选区内才显示放大镜
-        boolean isInside = isMouseInSelectionArea(event.getX(), event.getY());
-        if (isInside) {
-            magnifier.setVisible(true);
-            magnifier.update((int) event.getScreenX(), (int) event.getScreenY());
-        }
     }
 
     private void updateSelectionAreaPosition() {
@@ -1045,16 +1036,6 @@ public class ScreenshotSelector {
     public void cleanup() {
         stopMouseTracking();
         magnifier.setVisible(false);
-        
-        // Hide all stages instead of closing
-        for (Stage stage : screenStages.values()) {
-            stage.hide();
-            if (stage.getScene().getRoot() instanceof Pane pane) {
-                pane.getChildren().clear();
-            }
-        }
-        
-        root = null;
         selectionArea = null;
         drawCanvasArea = null;
         isSelecting = false;

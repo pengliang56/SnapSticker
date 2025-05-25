@@ -2,21 +2,16 @@ package com.github.sticker.draw;
 
 import com.github.sticker.feature.StickerStage;
 import com.github.sticker.screenshot.ScreenshotSelector;
-import com.github.sticker.util.StealthWindow;
 import javafx.animation.FadeTransition;
 import javafx.beans.binding.Bindings;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.geometry.Orientation;
 import javafx.geometry.Point2D;
-import javafx.geometry.Rectangle2D;
 import javafx.geometry.Pos;
 import javafx.scene.*;
-import javafx.scene.canvas.Canvas;
-import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.Cursor;
 import javafx.scene.control.*;
 import javafx.scene.control.Button;
-import javafx.scene.effect.BlendMode;
 import javafx.scene.effect.DropShadow;
 import javafx.scene.image.ImageView;
 import javafx.scene.image.WritableImage;
@@ -31,7 +26,6 @@ import javafx.scene.paint.Paint;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.shape.SVGPath;
 import javafx.stage.FileChooser;
-import javafx.stage.Stage;
 import javafx.util.Duration;
 
 import javax.imageio.ImageIO;
@@ -460,20 +454,12 @@ public class FloatingToolbar {
     private WritableImage snapshotScreen() {
         Rectangle selectionArea = screenshotSelector.getSelectionArea();
         Scene scene = drawCanvas.getScene();
-        Stage stage = (Stage) scene.getWindow();
-        
-        // 保存窗口的可见状态
-        boolean wasVisible = stage.isShowing();
-        
-        // 临时隐藏整个窗口
-        stage.hide();
 
         double x = selectionArea.getX();
         double y = selectionArea.getY();
         double width = selectionArea.getWidth();
         double height = selectionArea.getHeight();
 
-        // 第一步：获取屏幕内容
         Robot robot;
         try {
             robot = new Robot();
@@ -493,45 +479,7 @@ public class FloatingToolbar {
         BufferedImage screenImage = robot.createScreenCapture(awtRect);
         WritableImage screenContent = new WritableImage((int) width, (int) height);
         SwingFXUtils.toFXImage(screenImage, screenContent);
-        
-        // 恢复窗口可见性
-        if (wasVisible) {
-            stage.show();
-        }
-
-        // 第二步：获取绘画内容
-        SnapshotParameters params = new SnapshotParameters();
-        params.setFill(Color.TRANSPARENT); // 设置透明背景
-        
-        // 创建一个新的 Canvas 来获取绘画内容
-        Canvas drawingCanvas = new Canvas(width, height);
-        GraphicsContext drawingGc = drawingCanvas.getGraphicsContext2D();
-        
-        // 清除背景为透明
-        drawingGc.clearRect(0, 0, width, height);
-        
-        // 只复制绘画的部分（不包括背景）
-        drawingGc.drawImage(drawCanvas.snapshot(params, null),
-            selectionArea.getX(), selectionArea.getY(), // 源图像中的起始位置
-            width, height, // 要复制的区域大小
-            0, 0, // 目标位置
-            width, height // 目标大小
-        );
-        
-        WritableImage drawingContent = drawingCanvas.snapshot(params, null);
-
-        // 第三步：合并两个图像
-        Canvas canvas = new Canvas(width, height);
-        GraphicsContext gc = canvas.getGraphicsContext2D();
-        
-        // 先绘制屏幕内容
-        gc.drawImage(screenContent, 0, 0);
-        
-        // 再绘制绘画内容（使用叠加模式）
-        gc.setGlobalBlendMode(BlendMode.SRC_OVER);
-        gc.drawImage(drawingContent, 0, 0);
-        
-        return canvas.snapshot(params, null);
+        return screenContent;
     }
 
     private Separator createStyledSeparator() {
@@ -627,22 +575,22 @@ public class FloatingToolbar {
     private void createSticker() {
         // 创建贴图
         ImageView sticker = new ImageView(snapshotScreen());
-        
+
         // 获取选区的屏幕坐标
         Point2D screenPoint = selectionArea.localToScreen(selectionArea.getX(), selectionArea.getY());
-        
+
         // 设置贴图初始大小为选区大小
         sticker.setFitWidth(selectionArea.getWidth());
         sticker.setFitHeight(selectionArea.getHeight());
-        
+
         // 设置贴图初始位置（使用选区的屏幕坐标）
         sticker.setLayoutX(screenPoint.getX());
         sticker.setLayoutY(screenPoint.getY());
-        
+
         // 添加到贴图窗口并显示
         stickerStage.addSticker(sticker);
         //stickerStage.show();
-        
+
         // 清理截图选择器
         screenshotSelector.cancelSelection();
     }
