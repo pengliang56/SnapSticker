@@ -1,22 +1,21 @@
 package com.github.sticker.feature;
 
 import com.github.sticker.util.StealthWindow;
+import com.github.sticker.draw.Icon;
+import com.github.sticker.draw.DrawingToolbar;
 import javafx.animation.FadeTransition;
 import javafx.animation.KeyFrame;
 import javafx.animation.KeyValue;
 import javafx.animation.Timeline;
+import javafx.beans.binding.Bindings;
 import javafx.embed.swing.SwingFXUtils;
+import javafx.geometry.Orientation;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.CacheHint;
 import javafx.scene.Cursor;
 import javafx.scene.Scene;
 import javafx.scene.Node;
-import javafx.scene.control.ContextMenu;
-import javafx.scene.control.Label;
-import javafx.scene.control.MenuItem;
-import javafx.scene.control.Menu;
-import javafx.scene.control.SeparatorMenuItem;
-import javafx.scene.control.CheckMenuItem;
+import javafx.scene.control.*;
 import javafx.scene.effect.DropShadow;
 import javafx.scene.effect.ColorAdjust;
 import javafx.scene.image.Image;
@@ -53,6 +52,9 @@ public class StickerStage {
     private MenuItem opacityItem;
     private MenuItem rotationItem;
     private MenuItem invertedItem;
+
+    // 绘图工具栏相关
+    private DrawingToolbar currentToolbar;
 
     public static StickerStage getInstance() {
         if (instance == null) {
@@ -211,6 +213,25 @@ public class StickerStage {
         instance = null;
     }
 
+    /**
+     * 移除贴图及其相关组件
+     */
+    private void removeSticker(ImageView sticker) {
+        // 移除相关的工具栏和标签
+        root.getChildren().removeIf(node -> 
+            (node instanceof DrawingToolbar && node.getProperties().get("owner") == sticker) ||
+            (node instanceof Label && node.getProperties().get("owner") == sticker)
+        );
+        
+        // 移除贴图
+        root.getChildren().remove(sticker);
+        
+        // 如果没有贴图了，隐藏窗口
+        if (root.getChildren().stream().noneMatch(node -> node instanceof ImageView)) {
+            hide();
+        }
+    }
+
     private void initializeContextMenu() {
         contextMenu = new ContextMenu();
         contextMenu.getStyleClass().add("sticker-context-menu");
@@ -260,6 +281,7 @@ public class StickerStage {
         MenuItem closeItem = new MenuItem("Close and save");
         MenuItem destroyItem = new MenuItem("Destroy");
         shownItem = new CheckMenuItem("Shadow");
+        CheckMenuItem showToolbarItem = new CheckMenuItem("Show toolbar");
 
         // 创建贴图大小和属性菜单
         sizeMenu = new Menu();  // 使用Menu替代MenuItem，作为属性的父菜单
@@ -494,14 +516,9 @@ public class StickerStage {
         closeItem.setOnAction(e -> {
             if (e.getTarget() instanceof MenuItem menuItem) {
                 if (menuItem.getParentPopup().getOwnerNode() instanceof ImageView sticker) {
-                    // 先移除贴图，让用户可以立即继续操作
-                    root.getChildren().remove(sticker);
+                    // 先移除贴图和相关组件，让用户可以立即继续操作
+                    removeSticker(sticker);
                     contextMenu.hide(); // 操作完成后隐藏菜单
-
-                    // 如果没有贴图了，隐藏窗口
-                    if (root.getChildren().isEmpty()) {
-                        hide();
-                    }
 
                     // 异步保存图片到历史文件夹
                     saveToHistory(sticker.getImage());
@@ -512,13 +529,8 @@ public class StickerStage {
         destroyItem.setOnAction(e -> {
             if (e.getTarget() instanceof MenuItem menuItem) {
                 if (menuItem.getParentPopup().getOwnerNode() instanceof ImageView sticker) {
-                    root.getChildren().remove(sticker);
+                    removeSticker(sticker);
                     contextMenu.hide(); // 操作完成后隐藏菜单
-
-                    // 如果没有贴图了，隐藏窗口
-                    if (root.getChildren().isEmpty()) {
-                        hide();
-                    }
                 }
             }
         });
@@ -549,11 +561,26 @@ public class StickerStage {
             }
         });
 
+        // 设置工具栏显示切换事件
+        showToolbarItem.setOnAction(e -> {
+            if (e.getTarget() instanceof CheckMenuItem menuItem) {
+                if (menuItem.getParentPopup().getOwnerNode() instanceof ImageView sticker) {
+                    for (Node node : root.getChildren()) {
+                        if (node instanceof DrawingToolbar toolbar && toolbar.getProperties().get("owner") == sticker) {
+                            toolbar.toggleVisibility();
+                            menuItem.setSelected(toolbar.isShown());
+                            break;
+                        }
+                    }
+                }
+            }
+        });
+
         contextMenu.getItems().addAll(
                 copyItem, saveItem, new SeparatorMenuItem(),
                 zoomMenu, imageProcessingMenu, new SeparatorMenuItem(),
                 pasteItem, replaceItem, new SeparatorMenuItem(),
-                shownItem, new SeparatorMenuItem(),
+                shownItem, showToolbarItem, new SeparatorMenuItem(),
                 viewFolderItem, closeItem, destroyItem, new SeparatorMenuItem(),
                 sizeMenu
         );
@@ -627,6 +654,11 @@ public class StickerStage {
         setupStickerEffect(sticker);
         setupStickerBehavior(sticker);
         root.getChildren().add(sticker);
+        
+        // 确保窗口显示并置顶
+        stage.show();
+        stage.setAlwaysOnTop(true);
+        stage.toFront();
     }
 
     private void setupStickerEffect(ImageView sticker) {
@@ -762,10 +794,24 @@ public class StickerStage {
 
     private void setupStickerBehavior(ImageView sticker) {
         final double MIN_SCALE = 0.1;
-        final double MAX_SCALE = 10.0;
+        final double MAX_SCALE = 5.0;  // 限制最大缩放比例为 500%
 
         // 使用累积的滚动值来实现平滑缩放
         final double[] accumulatedScale = {1.0};
+
+        // 创建工具栏
+        DrawingToolbar toolbar = new DrawingToolbar(sticker);
+        toolbar.getProperties().put("owner", sticker);
+        currentToolbar = toolbar;
+
+        // 添加工具栏到根节点
+        root.getChildren().add(toolbar);
+
+        // 使用boundsInLocal来获取实际显示尺寸，避免受缩放影响
+        // 绑定工具栏位置到贴图底部右侧，保持5px间距
+        toolbar.layoutXProperty().bind(sticker.layoutXProperty().add(sticker.fitWidthProperty()).subtract(toolbar.widthProperty()));
+        toolbar.layoutYProperty().bind(sticker.layoutYProperty().add(sticker.fitHeightProperty()).add(5));
+
 
         // 创建缩放比例显示标签
         Label scaleLabel = new Label("100%");
