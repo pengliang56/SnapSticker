@@ -32,6 +32,7 @@ import javax.imageio.ImageIO;
 import java.io.File;
 import java.io.IOException;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 /**
@@ -242,8 +243,10 @@ public class StickerStage {
         MenuItem copyItem = new MenuItem("Copy image");
         MenuItem saveItem = new MenuItem("Save image as...");
         MenuItem pasteItem = new MenuItem("Paste");
-        MenuItem closeItem = new MenuItem("Close");
-        MenuItem destroyItem = new MenuItem("Destroy");
+        MenuItem resetScaleItem = new MenuItem("Reset to 100%");
+        MenuItem viewFolderItem = new MenuItem("View in history folder");
+        MenuItem closeItem = new MenuItem("Close and save to history");
+        MenuItem destroyItem = new MenuItem("Destroy this sticker");
 
         // 设置菜单项事件处理
         copyItem.setOnAction(e -> {
@@ -264,6 +267,52 @@ public class StickerStage {
                     saveImage(sticker.getImage());
                     contextMenu.hide(); // 操作完成后隐藏菜单
                 }
+            }
+        });
+
+        resetScaleItem.setOnAction(e -> {
+            if (e.getTarget() instanceof MenuItem menuItem) {
+                if (menuItem.getParentPopup().getOwnerNode() instanceof ImageView sticker) {
+                    // 获取原始图片尺寸
+                    double originalWidth = sticker.getImage().getWidth();
+                    double originalHeight = sticker.getImage().getHeight();
+                    
+                    // 重置为原始大小
+                    sticker.setFitWidth(originalWidth);
+                    sticker.setFitHeight(originalHeight);
+                    
+                    contextMenu.hide(); // 操作完成后隐藏菜单
+                }
+            }
+        });
+
+        viewFolderItem.setOnAction(e -> {
+            try {
+                // 获取历史文件夹路径
+                String userHome = System.getProperty("user.home");
+                File picturesDir = new File(userHome, "Pictures");
+                File historyDir = new File(picturesDir, "SnapSticker/history");
+                
+                // 确保文件夹存在
+                if (!historyDir.exists()) {
+                    historyDir.mkdirs();
+                }
+                
+                // 使用系统默认的文件管理器打开文件夹
+                if (System.getProperty("os.name").toLowerCase().contains("win")) {
+                    // Windows
+                    Runtime.getRuntime().exec("explorer.exe \"" + historyDir.getAbsolutePath() + "\"");
+                } else if (System.getProperty("os.name").toLowerCase().contains("mac")) {
+                    // macOS
+                    Runtime.getRuntime().exec("open \"" + historyDir.getAbsolutePath() + "\"");
+                } else {
+                    // Linux and others (assuming xdg-open is available)
+                    Runtime.getRuntime().exec("xdg-open \"" + historyDir.getAbsolutePath() + "\"");
+                }
+                
+                contextMenu.hide(); // 操作完成后隐藏菜单
+            } catch (IOException ex) {
+                ex.printStackTrace();
             }
         });
 
@@ -297,23 +346,40 @@ public class StickerStage {
         closeItem.setOnAction(e -> {
             if (e.getTarget() instanceof MenuItem menuItem) {
                 if (menuItem.getParentPopup().getOwnerNode() instanceof ImageView sticker) {
+                    // 先移除贴图，让用户可以立即继续操作
                     root.getChildren().remove(sticker);
                     contextMenu.hide(); // 操作完成后隐藏菜单
+                    
+                    // 如果没有贴图了，隐藏窗口
+                    if (root.getChildren().isEmpty()) {
+                        hide();
+                    }
+                    
+                    // 异步保存图片到历史文件夹
+                    saveToHistory(sticker.getImage());
                 }
             }
         });
 
         destroyItem.setOnAction(e -> {
-            System.out.println("-----------destroyItem-----------");
-            clearStickers();
-            hide();
-            contextMenu.hide(); // 操作完成后隐藏菜单
+            if (e.getTarget() instanceof MenuItem menuItem) {
+                if (menuItem.getParentPopup().getOwnerNode() instanceof ImageView sticker) {
+                    root.getChildren().remove(sticker);
+                    contextMenu.hide(); // 操作完成后隐藏菜单
+                    
+                    // 如果没有贴图了，隐藏窗口
+                    if (root.getChildren().isEmpty()) {
+                        hide();
+                    }
+                }
+            }
         });
 
         contextMenu.getItems().addAll(
                 copyItem, saveItem, new SeparatorMenuItem(),
+                resetScaleItem, new SeparatorMenuItem(),
                 pasteItem, new SeparatorMenuItem(),
-                closeItem, destroyItem
+                viewFolderItem, closeItem, destroyItem
         );
 
         // 添加菜单显示和隐藏的监听器
@@ -345,6 +411,36 @@ public class StickerStage {
             } catch (IOException ignored) {
             }
         }
+    }
+
+    private void saveToHistory(Image image) {
+        // 使用CompletableFuture异步处理保存操作
+        CompletableFuture.runAsync(() -> {
+            try {
+                // 获取用户图片目录
+                String userHome = System.getProperty("user.home");
+                File picturesDir = new File(userHome, "Pictures");
+                
+                // 创建 SnapSticker/history 目录
+                File historyDir = new File(picturesDir, "SnapSticker/history");
+                if (!historyDir.exists()) {
+                    historyDir.mkdirs();
+                }
+
+                // 生成文件名（使用时间戳）
+                String timestamp = String.format("%1$tY%1$tm%1$td_%1$tH%1$tM%1$tS",
+                        System.currentTimeMillis());
+                File outputFile = new File(historyDir, "SnapSticker_" + timestamp + ".png");
+
+                // 保存图片
+                ImageIO.write(SwingFXUtils.fromFXImage(image, null), "png", outputFile);
+                
+                System.out.println("Image saved to history: " + outputFile.getAbsolutePath());
+            } catch (IOException e) {
+                // 仅打印错误日志，不影响用户操作
+                e.printStackTrace();
+            }
+        });
     }
 
     private void addStageStyles() {
