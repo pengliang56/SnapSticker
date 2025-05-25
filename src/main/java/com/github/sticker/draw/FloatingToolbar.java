@@ -605,7 +605,7 @@ public class FloatingToolbar {
         this.selectionArea = selectionArea;
         this.parentContainer = parentContainer;
         this.screenshotSelector = screenshotSelector;
-        this.stickerStage = new StickerStage();  // 初始化贴图窗口
+        this.stickerStage = StickerStage.getInstance();  // 使用单例模式获取实例
         initializeToolbar();
         createSubToolbar();
         setupStickerShortcut();  // 设置贴图快捷键

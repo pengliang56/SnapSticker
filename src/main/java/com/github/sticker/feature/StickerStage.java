@@ -39,12 +39,20 @@ import java.util.function.Consumer;
  * 创建一个覆盖所有屏幕的透明窗口用于贴图
  */
 public class StickerStage {
+    private static StickerStage instance;
     private Stage stage;
     private Pane root;
     private Rectangle2D totalBounds;
     private ContextMenu contextMenu;
 
-    public StickerStage() {
+    public static StickerStage getInstance() {
+        if (instance == null) {
+            instance = new StickerStage();
+        }
+        return instance;
+    }
+
+    private StickerStage() {
         initializeTotalBounds();
         createStage();
         initializeContextMenu();
@@ -129,8 +137,7 @@ public class StickerStage {
         });
 
         stage.setScene(scene);
-        StealthWindow.configure(stage);
-        stage.show();
+        show();
     }
 
     private boolean isClickInMenu(double screenX, double screenY) {
@@ -158,7 +165,7 @@ public class StickerStage {
      * 显示贴图窗口
      */
     public void show() {
-        //StealthWindow.configure(stage);
+        StealthWindow.configure(stage);
         stage.show();
     }
 
@@ -213,6 +220,7 @@ public class StickerStage {
      */
     public void clearStickers() {
         root.getChildren().clear();
+        hide();
     }
 
     /**
@@ -224,6 +232,7 @@ public class StickerStage {
             stage = null;
         }
         root = null;
+        instance = null;
     }
 
     private void initializeContextMenu() {
