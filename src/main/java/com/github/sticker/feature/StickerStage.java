@@ -409,6 +409,9 @@ public class StickerStage {
                 borderEffect.setRadius(10);
                 borderEffect.setColor(activeColor);
                 
+                // 将贴图移到最前面
+                sticker.toFront();
+                
                 // 将其他贴图设置为非活跃状态
                 root.getChildren().forEach(node -> {
                     if (node instanceof ImageView && node != sticker) {
@@ -439,14 +442,16 @@ public class StickerStage {
                 dragDelta.y = e.getSceneY() - sticker.getLayoutY();
                 sticker.setCursor(Cursor.MOVE);
                 
-                // 请求焦点
+                // 请求焦点并置于顶层
                 sticker.requestFocus();
+                sticker.toFront();
             } else if (e.isSecondaryButtonDown()) {
                 if (contextMenu != null && contextMenu.isShowing()) {
                     contextMenu.hide();
                 }
                 contextMenu.show(sticker, e.getScreenX(), e.getScreenY());
                 sticker.requestFocus();
+                sticker.toFront();
             }
             e.consume();
         });
