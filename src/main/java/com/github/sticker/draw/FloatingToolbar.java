@@ -644,7 +644,7 @@ public class FloatingToolbar {
         
         // 添加到贴图窗口并显示
         stickerStage.addSticker(sticker);
-        stickerStage.show();
+        //stickerStage.show();
         
         // 清理截图选择器
         screenshotSelector.cancelSelection();

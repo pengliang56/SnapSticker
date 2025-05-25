@@ -129,7 +129,8 @@ public class StickerStage {
         });
 
         stage.setScene(scene);
-        //StealthWindow.configure(stage);
+        StealthWindow.configure(stage);
+        stage.show();
     }
 
     private boolean isClickInMenu(double screenX, double screenY) {
