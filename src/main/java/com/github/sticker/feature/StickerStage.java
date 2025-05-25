@@ -219,6 +219,7 @@ public class StickerStage {
         MenuItem saveItem = new MenuItem("Save image as...");
         MenuItem pasteItem = new MenuItem("Paste");
         MenuItem replaceItem = new MenuItem("Replace by file...");
+        
         // 创建缩放菜单
         Menu zoomMenu = new Menu("Zoom");
         
@@ -229,7 +230,7 @@ public class StickerStage {
         MenuItem zoom200Item = new MenuItem("200%");
         
         // 第二组：当前缩放和平滑选项
-        MenuItem currentZoomItem = new MenuItem("100%    Current");
+        MenuItem currentZoomItem = new MenuItem("100%         Current");
         currentZoomItem.setDisable(true);  // 禁用当前缩放项（仅用于显示）
         CheckMenuItem smoothingItem = new CheckMenuItem("Smoothing");
         smoothingItem.setSelected(true);   // 默认选中
@@ -241,6 +242,20 @@ public class StickerStage {
             new SeparatorMenuItem(),
             currentZoomItem, smoothingItem
         );
+
+        // 创建图片处理菜单
+        Menu imageProcessingMenu = new Menu("Image processing");
+        MenuItem rotateLeftItem = new MenuItem("Rotate left");
+        MenuItem rotateRightItem = new MenuItem("Rotate right");
+        MenuItem flipHorizontalItem = new MenuItem("Horizontal flip");
+        MenuItem flipVerticalItem = new MenuItem("Vertical flip");
+
+        imageProcessingMenu.getItems().addAll(
+            rotateLeftItem, rotateRightItem,
+            new SeparatorMenuItem(),
+            flipHorizontalItem, flipVerticalItem
+        );
+
         MenuItem viewFolderItem = new MenuItem("View in folder");
         MenuItem closeItem = new MenuItem("Close and save");
         MenuItem destroyItem = new MenuItem("Destroy");
@@ -266,6 +281,49 @@ public class StickerStage {
         rotationItem.setDisable(true);
         opacityItem.setDisable(true);
         invertedItem.setDisable(true);
+
+        // 设置图片处理事件
+        rotateLeftItem.setOnAction(e -> {
+            if (e.getTarget() instanceof MenuItem menuItem) {
+                if (menuItem.getParentMenu().getParentPopup().getOwnerNode() instanceof ImageView sticker) {
+                    // 逆时针旋转90度
+                    sticker.setRotate((sticker.getRotate() - 90) % 360);
+                    updateStickerSize(sticker);
+                    contextMenu.hide();
+                }
+            }
+        });
+
+        rotateRightItem.setOnAction(e -> {
+            if (e.getTarget() instanceof MenuItem menuItem) {
+                if (menuItem.getParentMenu().getParentPopup().getOwnerNode() instanceof ImageView sticker) {
+                    // 顺时针旋转90度
+                    sticker.setRotate((sticker.getRotate() + 90) % 360);
+                    updateStickerSize(sticker);
+                    contextMenu.hide();
+                }
+            }
+        });
+
+        flipHorizontalItem.setOnAction(e -> {
+            if (e.getTarget() instanceof MenuItem menuItem) {
+                if (menuItem.getParentMenu().getParentPopup().getOwnerNode() instanceof ImageView sticker) {
+                    // 水平翻转
+                    sticker.setScaleX(sticker.getScaleX() * -1);
+                    contextMenu.hide();
+                }
+            }
+        });
+
+        flipVerticalItem.setOnAction(e -> {
+            if (e.getTarget() instanceof MenuItem menuItem) {
+                if (menuItem.getParentMenu().getParentPopup().getOwnerNode() instanceof ImageView sticker) {
+                    // 垂直翻转
+                    sticker.setScaleY(sticker.getScaleY() * -1);
+                    contextMenu.hide();
+                }
+            }
+        });
 
         // 设置缩放菜单事件处理
         zoom33Item.setOnAction(e -> {
@@ -328,8 +386,6 @@ public class StickerStage {
                 }
             }
         });
-
-
 
         viewFolderItem.setOnAction(e -> {
             try {
@@ -495,7 +551,7 @@ public class StickerStage {
 
         contextMenu.getItems().addAll(
                 copyItem, saveItem, new SeparatorMenuItem(),
-                zoomMenu, new SeparatorMenuItem(),
+                zoomMenu, imageProcessingMenu, new SeparatorMenuItem(),
                 pasteItem, replaceItem, new SeparatorMenuItem(),
                 shownItem, new SeparatorMenuItem(),
                 viewFolderItem, closeItem, destroyItem, new SeparatorMenuItem(),
