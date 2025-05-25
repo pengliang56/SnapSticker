@@ -295,6 +295,7 @@ public class StickerStage {
         });
 
         destroyItem.setOnAction(e -> {
+            System.out.println("-----------destroyItem-----------");
             clearStickers();
             hide();
             contextMenu.hide(); // 操作完成后隐藏菜单

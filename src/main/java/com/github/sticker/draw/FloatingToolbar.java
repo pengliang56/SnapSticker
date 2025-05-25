@@ -639,9 +639,6 @@ public class FloatingToolbar {
         sticker.setLayoutX(screenPoint.getX());
         sticker.setLayoutY(screenPoint.getY());
         
-        System.out.println("创建贴图 - 选区位置: (" + selectionArea.getX() + "," + selectionArea.getY() + 
-                         "), 屏幕坐标: (" + screenPoint.getX() + "," + screenPoint.getY() + ")");
-        
         // 添加到贴图窗口并显示
         stickerStage.addSticker(sticker);
         //stickerStage.show();
