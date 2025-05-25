@@ -211,6 +211,7 @@ public class StickerStage {
         MenuItem viewFolderItem = new MenuItem("View in folder");
         MenuItem closeItem = new MenuItem("Close and save");
         MenuItem destroyItem = new MenuItem("Destroy");
+        MenuItem replaceItem = new MenuItem("Replace by file...");
 
         // 设置菜单项事件处理
         copyItem.setOnAction(e -> {
@@ -307,6 +308,53 @@ public class StickerStage {
             }
         });
 
+        // 添加替换图片的事件处理
+        replaceItem.setOnAction(e -> {
+            if (e.getTarget() instanceof MenuItem menuItem) {
+                if (menuItem.getParentPopup().getOwnerNode() instanceof ImageView sticker) {
+                    FileChooser fileChooser = new FileChooser();
+                    fileChooser.setTitle("Replace Image");
+                    fileChooser.getExtensionFilters().addAll(
+                            new FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg", "*.jpeg", "*.gif", "*.bmp")
+                    );
+
+                    // 设置初始目录为用户的图片文件夹
+                    String userHome = System.getProperty("user.home");
+                    File picturesDir = new File(userHome, "Pictures");
+                    if (picturesDir.exists()) {
+                        fileChooser.setInitialDirectory(picturesDir);
+                    }
+
+                    // 显示文件选择器
+                    File file = fileChooser.showOpenDialog(stage);
+                    if (file != null) {
+                        try {
+                            // 只记录当前贴图的位置
+                            double currentX = sticker.getLayoutX();
+                            double currentY = sticker.getLayoutY();
+
+                            // 加载新图片
+                            Image newImage = new Image(file.toURI().toString());
+                            sticker.setImage(newImage);
+
+                            // 重置大小限制，让图片显示原始尺寸
+                            sticker.setFitWidth(0);
+                            sticker.setFitHeight(0);
+                            sticker.setPreserveRatio(true);
+
+                            // 只恢复位置
+                            sticker.setLayoutX(currentX);
+                            sticker.setLayoutY(currentY);
+
+                            contextMenu.hide(); // 操作完成后隐藏菜单
+                        } catch (Exception ex) {
+                            System.err.println("Error loading image: " + ex.getMessage());
+                        }
+                    }
+                }
+            }
+        });
+
         closeItem.setOnAction(e -> {
             if (e.getTarget() instanceof MenuItem menuItem) {
                 if (menuItem.getParentPopup().getOwnerNode() instanceof ImageView sticker) {
@@ -342,7 +390,7 @@ public class StickerStage {
         contextMenu.getItems().addAll(
                 copyItem, saveItem, new SeparatorMenuItem(),
                 resetScaleItem, new SeparatorMenuItem(),
-                pasteItem, new SeparatorMenuItem(),
+                pasteItem, replaceItem, new SeparatorMenuItem(),
                 viewFolderItem, closeItem, destroyItem
         );
 
