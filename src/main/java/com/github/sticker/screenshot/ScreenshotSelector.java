@@ -23,12 +23,8 @@ import javafx.stage.StageStyle;
 import javafx.util.Duration;
 
 import java.awt.*;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Consumer;
@@ -111,7 +107,7 @@ public class ScreenshotSelector {
             Stage stage = new Stage();
             stage.initStyle(StageStyle.TRANSPARENT);
             stage.setAlwaysOnTop(true);
-            stage.setTitle("SnapSticker");
+            stage.setTitle("Screenshot");
 
             Rectangle2D bounds = screen.getBounds();
             stage.setX(bounds.getMinX());
@@ -339,7 +335,7 @@ public class ScreenshotSelector {
     private void createCornerAndMidpointMarkers() {
         // 移除旧的标记点（如果存在）
         root.getChildren().removeIf(node -> node instanceof javafx.scene.shape.Circle);
-        
+
         // 预先创建所有标记点
         List<javafx.scene.shape.Circle> markers = new ArrayList<>(8);
         for (int i = 0; i < 8; i++) {
@@ -439,7 +435,7 @@ public class ScreenshotSelector {
         scene.setOnMousePressed(event -> {
             // Clear any existing selection on other screens
             clearOtherScreenSelections(currentScreen);
-            
+
             magnifier.setVisible(false);  // Hide magnifier when starting selection
             if (!isSelecting) {
                 drawCanvasArea.setStyle(null);
@@ -447,7 +443,7 @@ public class ScreenshotSelector {
 
                 startX = event.getScreenX();
                 startY = event.getScreenY();
-                
+
                 // 创建选择区域
                 if (selectionArea == null) {
                     selectionArea = createSelectionMask();
@@ -492,7 +488,7 @@ public class ScreenshotSelector {
     private void handleMouseReleased(javafx.scene.input.MouseEvent event) {
         endX = event.getScreenX();
         endY = event.getScreenY();
-        
+
         // Check if we've moved to a different screen
         Screen currentMouseScreen = screenManager.getCurrentScreen();
         if (currentMouseScreen != startScreen) {
@@ -944,7 +940,7 @@ public class ScreenshotSelector {
         // 批量更新选择框位置
         selectionArea.setCache(true);
         selectionArea.setCacheHint(CacheHint.SPEED);
-        
+
         // 使用临时变量存储当前位置
         startX = newX;
         startY = newY;
@@ -1011,11 +1007,77 @@ public class ScreenshotSelector {
     }
 
     /**
-     * Cancel the screenshot selection process
-     * Cleans up resources and closes the selection window
+     * Cancel the current screenshot selection process
+     * Cleans up only the current selection resources
      */
     public void cancelSelection() {
-        cleanup();
+        stopMouseTracking();
+        magnifier.setVisible(false);
+
+        screenStages.forEach((k, v) -> v.getScene().setFill(Color.rgb(0, 0, 0, 0.00)));
+
+        // Clear current selection UI elements
+        if (root != null) {
+            root.getChildren().clear();
+        }
+
+        // Reset selection state
+        selectionArea = null;
+        drawCanvasArea = null;
+        isSelecting = false;
+        isResizing = false;
+        maskTop = null;
+        maskBottom = null;
+        maskLeft = null;
+        maskRight = null;
+        resizeDirection = "";
+
+        if (floatingToolbar != null) {
+            floatingToolbar = null;
+        }
+
+        // Reset scene cursor
+        if (selectorStage != null && selectorStage.getScene() != null) {
+            selectorStage.getScene().setCursor(createDirectionalCursor(Icon.point));
+        }
+    }
+
+    /**
+     * Clean up resources before reinitializing selection
+     * This is used when starting a new selection
+     */
+    private void cleanup() {
+        // Only clean up current selection resources
+        cancelSelection();
+    }
+
+    /**
+     * Dispose of all resources when the application is closing
+     * This performs a complete cleanup of all resources
+     */
+    public void dispose() {
+        // First cancel any active selection
+        cancelSelection();
+
+        // Shutdown the executor service
+        if (updateExecutor != null) {
+            updateExecutor.shutdown();
+        }
+
+        // Close and clear all cached stages
+        for (Stage stage : screenStages.values()) {
+            stage.close();
+        }
+        screenStages.clear();
+
+        // Dispose of the magnifier
+        magnifier.dispose();
+
+        // Clear all references
+        selectorStage = null;
+        root = null;
+        currentScreen = null;
+        startScreen = null;
     }
 
     public Rectangle getSelectionArea() {
@@ -1030,38 +1092,6 @@ public class ScreenshotSelector {
         return createDirectionalCursor(Icon.point);
     }
 
-    /**
-     * Clean up resources before reinitializing
-     */
-    public void cleanup() {
-        stopMouseTracking();
-        magnifier.setVisible(false);
-        selectionArea = null;
-        drawCanvasArea = null;
-        isSelecting = false;
-        isResizing = false;
-        maskTop = null;
-        maskBottom = null;
-        maskLeft = null;
-        maskRight = null;
-        resizeDirection = "";
-    }
-
-    /**
-     * Dispose of all resources when the application is closing
-     */
-    public void dispose() {
-        if (updateExecutor != null) {
-            updateExecutor.shutdown();
-        }
-        // Close and clear all cached stages
-        for (Stage stage : screenStages.values()) {
-            stage.close();
-        }
-        screenStages.clear();
-        magnifier.dispose();
-    }
-
     private static final ImageCursor CURSOR_N = createDirectionalCursor(Icon.arrowUp);
     private static final ImageCursor CURSOR_S = createDirectionalCursor(Icon.arrowDown);
     private static final ImageCursor CURSOR_E = createDirectionalCursor(Icon.arrowRight);
@@ -1074,6 +1104,7 @@ public class ScreenshotSelector {
 
     /**
      * Clear selection areas on all screens except the current one
+     *
      * @param currentScreen The screen to exclude from clearing
      */
     private void clearOtherScreenSelections(Screen currentScreen) {
@@ -1084,7 +1115,7 @@ public class ScreenshotSelector {
                 if (scene != null && scene.getRoot() instanceof Pane pane) {
                     // Clear all children except the base elements
                     pane.getChildren().clear();
-                    
+
                     // Reset any selection-related state for that screen
                     if (stage == selectorStage) {
                         selectionArea = null;
@@ -1100,13 +1131,14 @@ public class ScreenshotSelector {
 
     /**
      * Clear selection on a specific screen
+     *
      * @param screen The screen to clear selection from
      */
     private void clearScreenSelection(Screen screen) {
         Stage stage = screenStages.get(screen);
         if (stage != null && stage.getScene() != null && stage.getScene().getRoot() instanceof Pane pane) {
             pane.getChildren().clear();
-            
+
             // Reset selection state if this is the current selector stage
             if (stage == selectorStage) {
                 selectionArea = null;

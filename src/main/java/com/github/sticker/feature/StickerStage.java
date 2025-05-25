@@ -6,10 +6,9 @@ import javafx.animation.KeyFrame;
 import javafx.animation.KeyValue;
 import javafx.animation.Timeline;
 import javafx.embed.swing.SwingFXUtils;
-import javafx.geometry.Point2D;
 import javafx.geometry.Rectangle2D;
+import javafx.scene.CacheHint;
 import javafx.scene.Cursor;
-import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
@@ -24,7 +23,6 @@ import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
-import javafx.scene.transform.Scale;
 import javafx.stage.*;
 import javafx.util.Duration;
 
@@ -33,7 +31,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Consumer;
 
 /**
  * 贴图窗口管理类
@@ -90,7 +87,7 @@ public class StickerStage {
         stage = new Stage();
         stage.initStyle(StageStyle.TRANSPARENT);
         stage.setAlwaysOnTop(true);
-        stage.setTitle("SnapSticker");
+        stage.setTitle("Sticker");
 
         // 设置窗口位置和大小为所有屏幕的总边界
         stage.setX(totalBounds.getMinX());
@@ -100,45 +97,20 @@ public class StickerStage {
 
         // 创建根面板
         root = new Pane();
+        root.setCache(true);
+        root.setCacheHint(CacheHint.SPEED);
         root.setStyle("-fx-background-color: transparent;");
 
         // 创建场景
         Scene scene = new Scene(root);
-        scene.setFill(null);
+        scene.setFill(Color.rgb(0, 0, 0, 0.00));
         scene.getStylesheets().add(
                 Objects.requireNonNull(getClass().getResource("/styles/sticker.css")).toExternalForm()
         );
 
-        // 添加点击事件来处理高亮和菜单
-        scene.setOnMousePressed(e -> {
-            Node clickedNode = e.getPickResult().getIntersectedNode();
-            
-            // 检查点击是否在菜单内
-            if (!isClickInMenu(e.getScreenX(), e.getScreenY())) {
-                // 如果菜单显示，隐藏它
-                if (contextMenu != null && contextMenu.isShowing()) {
-                    contextMenu.hide();
-                }
-                
-                // 遍历所有贴图，处理高亮效果
-                root.getChildren().forEach(node -> {
-                    if (node instanceof ImageView) {
-                        ImageView sticker = (ImageView) node;
-                        DropShadow effect = (DropShadow) sticker.getEffect();
-                        if (effect != null) {
-                            // 如果点击的不是当前贴图，移除高亮
-                            if (clickedNode != sticker) {
-                                effect.setColor(Color.rgb(102, 178, 255, 0.2));
-                                effect.setRadius(10);
-                            }
-                        }
-                    }
-                });
-            }
-        });
-
         stage.setScene(scene);
-        show();
+        StealthWindow.configure(stage);
+        stage.show();
     }
 
     private boolean isClickInMenu(double screenX, double screenY) {
@@ -160,14 +132,6 @@ public class StickerStage {
         // 检查点击是否在菜单区域内
         return screenX >= menuX && screenX <= (menuX + menuWidth) &&
                 screenY >= menuY && screenY <= (menuY + menuHeight);
-    }
-
-    /**
-     * 显示贴图窗口
-     */
-    public void show() {
-        StealthWindow.configure(stage);
-        stage.show();
     }
 
     /**
@@ -276,11 +240,11 @@ public class StickerStage {
                     // 获取原始图片尺寸
                     double originalWidth = sticker.getImage().getWidth();
                     double originalHeight = sticker.getImage().getHeight();
-                    
+
                     // 重置为原始大小
                     sticker.setFitWidth(originalWidth);
                     sticker.setFitHeight(originalHeight);
-                    
+
                     contextMenu.hide(); // 操作完成后隐藏菜单
                 }
             }
@@ -292,12 +256,12 @@ public class StickerStage {
                 String userHome = System.getProperty("user.home");
                 File picturesDir = new File(userHome, "Pictures");
                 File historyDir = new File(picturesDir, "SnapSticker/history");
-                
+
                 // 确保文件夹存在
                 if (!historyDir.exists()) {
                     historyDir.mkdirs();
                 }
-                
+
                 // 使用系统默认的文件管理器打开文件夹
                 if (System.getProperty("os.name").toLowerCase().contains("win")) {
                     // Windows
@@ -309,7 +273,7 @@ public class StickerStage {
                     // Linux and others (assuming xdg-open is available)
                     Runtime.getRuntime().exec("xdg-open \"" + historyDir.getAbsolutePath() + "\"");
                 }
-                
+
                 contextMenu.hide(); // 操作完成后隐藏菜单
             } catch (IOException ex) {
                 ex.printStackTrace();
@@ -349,12 +313,12 @@ public class StickerStage {
                     // 先移除贴图，让用户可以立即继续操作
                     root.getChildren().remove(sticker);
                     contextMenu.hide(); // 操作完成后隐藏菜单
-                    
+
                     // 如果没有贴图了，隐藏窗口
                     if (root.getChildren().isEmpty()) {
                         hide();
                     }
-                    
+
                     // 异步保存图片到历史文件夹
                     saveToHistory(sticker.getImage());
                 }
@@ -366,7 +330,7 @@ public class StickerStage {
                 if (menuItem.getParentPopup().getOwnerNode() instanceof ImageView sticker) {
                     root.getChildren().remove(sticker);
                     contextMenu.hide(); // 操作完成后隐藏菜单
-                    
+
                     // 如果没有贴图了，隐藏窗口
                     if (root.getChildren().isEmpty()) {
                         hide();
@@ -420,7 +384,7 @@ public class StickerStage {
                 // 获取用户图片目录
                 String userHome = System.getProperty("user.home");
                 File picturesDir = new File(userHome, "Pictures");
-                
+
                 // 创建 SnapSticker/history 目录
                 File historyDir = new File(picturesDir, "SnapSticker/history");
                 if (!historyDir.exists()) {
@@ -434,7 +398,7 @@ public class StickerStage {
 
                 // 保存图片
                 ImageIO.write(SwingFXUtils.fromFXImage(image, null), "png", outputFile);
-                
+
                 System.out.println("Image saved to history: " + outputFile.getAbsolutePath());
             } catch (IOException e) {
                 // 仅打印错误日志，不影响用户操作
@@ -463,14 +427,14 @@ public class StickerStage {
         borderEffect.setOffsetY(0);
         borderEffect.setRadius(10);
         borderEffect.setSpread(0.4);
-        
+
         // 定义颜色状态
         Color dimColor = Color.rgb(255, 255, 255, 0.3);    // 淡白色状态（非活跃）
         Color activeColor = Color.rgb(102, 178, 255, 0.8); // 高亮蓝色状态（活跃）
-        
+
         // 用于记录拖拽的偏移量
         Delta dragDelta = new Delta();
-        
+
         // 设置初始效果
         borderEffect.setColor(activeColor);
         sticker.setEffect(borderEffect);
@@ -488,7 +452,7 @@ public class StickerStage {
                         new KeyValue(borderEffect.colorProperty(), activeColor))
         );
         breathingAnimation.setCycleCount(1);  // 只播放一次
-        
+
         // 动画结束后保持高亮状态
         breathingAnimation.setOnFinished(e -> {
             borderEffect.setRadius(10);
@@ -498,16 +462,16 @@ public class StickerStage {
         // 确保贴图可以接收鼠标事件和焦点
         sticker.setPickOnBounds(true);
         sticker.setFocusTraversable(true);
-        
+
         // 添加焦点变化监听
         sticker.focusedProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal) {  // 获得焦点
                 borderEffect.setRadius(10);
                 borderEffect.setColor(activeColor);
-                
+
                 // 将贴图移到最前面
                 sticker.toFront();
-                
+
                 // 将其他贴图设置为非活跃状态
                 root.getChildren().forEach(node -> {
                     if (node instanceof ImageView && node != sticker) {
@@ -532,12 +496,12 @@ public class StickerStage {
                 if (contextMenu != null && contextMenu.isShowing()) {
                     contextMenu.hide();
                 }
-                
+
                 // 记录鼠标点击位置相对于图片的偏移
                 dragDelta.x = e.getSceneX() - sticker.getLayoutX();
                 dragDelta.y = e.getSceneY() - sticker.getLayoutY();
                 sticker.setCursor(Cursor.MOVE);
-                
+
                 // 请求焦点并置于顶层
                 sticker.requestFocus();
                 sticker.toFront();
@@ -574,42 +538,42 @@ public class StickerStage {
     private void setupStickerBehavior(ImageView sticker) {
         final double MIN_SCALE = 0.1;
         final double MAX_SCALE = 10.0;
-        
+
         // 使用累积的滚动值来实现平滑缩放
         final double[] accumulatedScale = {1.0};
-        
+
         // 创建缩放比例显示标签
         Label scaleLabel = new Label("100%");
         scaleLabel.setStyle("-fx-background-color: rgba(255, 255, 255, 0.8);" +
-                          "-fx-text-fill: black;" +
-                          "-fx-padding: 2 8;" +
-                          "-fx-background-radius: 3;" +
-                          "-fx-border-radius: 3;" +
-                          "-fx-border-color: rgba(204, 204, 204, 0.8);" +
-                          "-fx-border-width: 1;" +
-                          "-fx-font-size: 12px;" +
-                          "-fx-font-weight: bold;");
+                "-fx-text-fill: black;" +
+                "-fx-padding: 2 8;" +
+                "-fx-background-radius: 3;" +
+                "-fx-border-radius: 3;" +
+                "-fx-border-color: rgba(204, 204, 204, 0.8);" +
+                "-fx-border-width: 1;" +
+                "-fx-font-size: 12px;" +
+                "-fx-font-weight: bold;");
         scaleLabel.setFont(Font.font("System", FontWeight.BOLD, 12));
         scaleLabel.setCursor(Cursor.HAND);
         scaleLabel.setVisible(false);
         scaleLabel.setOpacity(0);
         scaleLabel.setMouseTransparent(true);  // 禁用标签的事件响应
-        
+
         // 记录原始尺寸
         final double[] originalWidth = {sticker.getFitWidth()};
         final double[] originalHeight = {sticker.getFitHeight()};
-        
-        
+
+
         // 设置图片的事件接收
         sticker.setPickOnBounds(true);
         sticker.setMouseTransparent(false);
-        
+
         // 移除右键菜单请求事件（防止双触发）
         sticker.setOnContextMenuRequested(null);
-        
+
         // 添加标签到根节点
         root.getChildren().add(scaleLabel);
-        
+
         // 更新标签位置
         scaleLabel.layoutXProperty().bind(sticker.layoutXProperty());
         scaleLabel.layoutYProperty().bind(sticker.layoutYProperty().subtract(25));
@@ -626,23 +590,23 @@ public class StickerStage {
             double scrollAmount = e.getDeltaY();
             double zoomFactor = Math.exp(scrollAmount * 0.002);
             zoomFactor = isCtrlDown ? Math.exp(scrollAmount * 0.001) : zoomFactor;
-            
+
             double newScale = accumulatedScale[0] * zoomFactor;
-            
+
             if (newScale >= MIN_SCALE && newScale <= MAX_SCALE) {
                 // 更新缩放值
                 accumulatedScale[0] = newScale;
-                
+
                 // 直接设置新的尺寸
                 double newWidth = originalWidth[0] * newScale;
                 double newHeight = originalHeight[0] * newScale;
-                
+
                 sticker.setFitWidth(newWidth);
                 sticker.setFitHeight(newHeight);
-                
+
                 updateScaleLabel(scaleLabel, newScale, fadeOut);
             }
-            
+
             e.consume();
         });
     }

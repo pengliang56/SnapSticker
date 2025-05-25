@@ -8,6 +8,7 @@ package com.github.sticker;
 
 import com.github.kwhat.jnativehook.GlobalScreen;
 import com.github.kwhat.jnativehook.NativeHookException;
+import com.github.sticker.feature.StickerStage;
 import com.github.sticker.screenshot.HookKeyListener;
 import com.github.sticker.screenshot.ScreenshotSelector;
 import com.github.sticker.screenshot.SystemTrayManager;
@@ -26,6 +27,8 @@ import java.net.ServerSocket;
  */
 public class ScreenshotStickerApp extends Application {
     private SystemTrayManager systemTrayManager;
+    private ScreenshotSelector screenshotSelector = null;
+    private StickerStage stickerStage = null;
 
     /**
      * Application entry point
@@ -58,8 +61,10 @@ public class ScreenshotStickerApp extends Application {
             ScreenManager screenManager = new ScreenManager();
             setupPrimaryStage(primaryStage);
 
-            ScreenshotSelector screenshotSelector = new ScreenshotSelector(screenManager);
-
+            screenshotSelector = new ScreenshotSelector(screenManager);
+            Platform.runLater(() -> {
+                stickerStage = StickerStage.getInstance();
+            });
             systemTrayManager = new SystemTrayManager(screenshotSelector);
             systemTrayManager.initialize();
 
@@ -99,6 +104,8 @@ public class ScreenshotStickerApp extends Application {
             systemTrayManager.cleanup();
         }
 
+        screenshotSelector.dispose();
+        stickerStage.dispose();
         try {
             GlobalScreen.unregisterNativeHook();
         } catch (NativeHookException ignored) {
