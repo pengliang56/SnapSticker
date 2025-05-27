@@ -583,13 +583,15 @@ public class FloatingToolbar {
         sticker.setFitWidth(selectionArea.getWidth());
         sticker.setFitHeight(selectionArea.getHeight());
 
-        // 设置贴图初始位置（使用选区的屏幕坐标）
-        sticker.setLayoutX(screenPoint.getX());
-        sticker.setLayoutY(screenPoint.getY());
+        // 将屏幕坐标转换为相对于贴图窗口的坐标
+        Point2D stagePoint = stickerStage.getRoot().screenToLocal(screenPoint.getX(), screenPoint.getY());
+        
+        // 设置贴图初始位置（使用相对于贴图窗口的坐标）
+        sticker.setLayoutX(stagePoint.getX());
+        sticker.setLayoutY(stagePoint.getY());
 
         // 添加到贴图窗口并显示
         stickerStage.addSticker(sticker);
-        //stickerStage.show();
 
         // 清理截图选择器
         screenshotSelector.cancelSelection();
