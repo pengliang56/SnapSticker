@@ -119,7 +119,7 @@ public class FloatingToolbar {
             ClipboardContent content = new ClipboardContent();
             content.putImage(snapshotScreen());
             clipboard.setContent(content);
-            screenshotSelector.cancelSelection();
+            cancleSelection();
         });
         toolbar.getChildren().add(btn);
     }
@@ -149,7 +149,7 @@ public class FloatingToolbar {
                 WritableImage image = snapshotScreen();
                 try {
                     ImageIO.write(SwingFXUtils.fromFXImage(image, null), "png", file);
-                    screenshotSelector.cancelSelection();  // 保存完成后清理选择框资源
+                    cancleSelection();
                 } catch (IOException ignored) {
                 }
             }
@@ -558,8 +558,10 @@ public class FloatingToolbar {
         createSubToolbar();
         setupStickerShortcut();  // 设置贴图快捷键
         parentContainer.getChildren().add(toolbar);
-        parentContainer.getChildren().remove(screenshotSelector.getMagnifier());
-        parentContainer.getChildren().add(screenshotSelector.getMagnifier());
+        if (screenshotSelector == null) {
+            parentContainer.getChildren().remove(screenshotSelector.getMagnifier());
+            parentContainer.getChildren().add(screenshotSelector.getMagnifier());
+        }
     }
 
     private void setupStickerShortcut() {
@@ -594,6 +596,12 @@ public class FloatingToolbar {
         stickerStage.addSticker(sticker);
 
         // 清理截图选择器
-        screenshotSelector.cancelSelection();
+        cancleSelection();
+    }
+
+    private void cancleSelection()  {
+        if (screenshotSelector != null) {
+            screenshotSelector.cancelSelection();
+        }
     }
 }
