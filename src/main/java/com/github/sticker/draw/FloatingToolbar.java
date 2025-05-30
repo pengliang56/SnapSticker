@@ -1,10 +1,12 @@
 package com.github.sticker.draw;
 
 import com.github.sticker.feature.StickerStage;
+import com.github.sticker.feature.widget.StickerPane;
 import com.github.sticker.screenshot.ScreenshotSelector;
 import javafx.animation.FadeTransition;
 import javafx.beans.binding.Bindings;
 import javafx.embed.swing.SwingFXUtils;
+import javafx.geometry.Bounds;
 import javafx.geometry.Orientation;
 import javafx.geometry.Point2D;
 import javafx.geometry.Pos;
@@ -63,6 +65,7 @@ public class FloatingToolbar {
 
     private final ScreenshotSelector screenshotSelector;
     private final StickerStage stickerStage;
+    private StickerPane stickerPane;
 
     private void createButtons() {
         Separator group1Separator = createStyledSeparator();
@@ -389,11 +392,67 @@ public class FloatingToolbar {
 
     private void initializeToolbar() {
         createButtons();
-        setupBottomPositionBinding();
+        if(selectionArea == null) {
+            setupImageViewToolbarBinding(stickerPane.getImageView());
+        } else {
+            setupBottomPositionBinding();
+        }
         setupKeyboardToggle();
 
         toolbar.getStyleClass().add("toolbar");
         toolbar.setPickOnBounds(false);
+    }
+
+    private void setupImageViewToolbarBinding(ImageView imageView) {
+        // X轴定位（保持居中且防止左右溢出）
+        toolbar.layoutXProperty().bind(
+                Bindings.createDoubleBinding(() -> {
+                            // 获取ImageView在父容器中的边界
+                            Bounds bounds = imageView.getBoundsInParent();
+                            System.out.println("bounds: " + bounds);
+                            // 计算理想居中位置
+                            double idealX = bounds.getMinX() +
+                                    (bounds.getWidth() - toolbar.getWidth()) / 2;
+
+                            // 边界约束
+                            double minX = 5;
+                            double maxX = parentContainer.getWidth() - toolbar.getWidth() - 5;
+
+                            return Math.max(minX, Math.min(idealX, maxX));
+                        },
+                        imageView.boundsInParentProperty(),
+                        toolbar.widthProperty(),
+                        parentContainer.widthProperty())
+        );
+
+        // Y轴动态定位（上下自动切换）
+        toolbar.layoutYProperty().bind(
+                Bindings.createDoubleBinding(() -> {
+                            // 获取ImageView在父容器中的边界
+                            Bounds bounds = imageView.getBoundsInParent();
+                            System.out.println("bounds: " + bounds);
+
+                            // 基础参数计算
+                            double imageBottom = bounds.getMinY() + bounds.getHeight();
+                            double toolbarHeight = toolbar.getHeight();
+                            double parentHeight = parentContainer.getHeight();
+
+                            // 默认下方位置
+                            double bottomPosition = imageBottom + 10;
+
+                            // 上方位置
+                            double topPosition = bounds.getMinY() - toolbarHeight - 10;
+
+                            // 检测下方空间是否足够
+                            boolean canShowBelow = (bottomPosition + toolbarHeight) < (parentHeight - 5);
+
+                            // 智能选择显示位置
+                            return canShowBelow ? bottomPosition : topPosition;
+                        },
+                        imageView.boundsInParentProperty(),
+                        parentContainer.heightProperty(),
+                        toolbar.heightProperty())
+        );
     }
 
     private void setupBottomPositionBinding() {
@@ -452,7 +511,7 @@ public class FloatingToolbar {
     }
 
     private WritableImage snapshotScreen() {
-        Rectangle selectionArea = screenshotSelector.getSelectionArea();
+        //Rectangle selectionArea = screenshotSelector.getSelectionArea();
         Scene scene = drawCanvas.getScene();
 
         double x = selectionArea.getX();
@@ -548,9 +607,10 @@ public class FloatingToolbar {
         return drawMode;
     }
 
-    public FloatingToolbar(Rectangle selectionArea, Pane parentContainer, DrawCanvas drawCanvasArea, ScreenshotSelector screenshotSelector) {
+    public FloatingToolbar(Rectangle selectionArea, Pane parentContainer, DrawCanvas drawCanvasArea, ScreenshotSelector screenshotSelector, StickerPane stickerPane) {
         this.drawCanvas = drawCanvasArea;
         this.selectionArea = selectionArea;
+        this.stickerPane = stickerPane;
         this.parentContainer = parentContainer;
         this.screenshotSelector = screenshotSelector;
         this.stickerStage = StickerStage.getInstance();  // 使用单例模式获取实例
@@ -558,7 +618,7 @@ public class FloatingToolbar {
         createSubToolbar();
         setupStickerShortcut();  // 设置贴图快捷键
         parentContainer.getChildren().add(toolbar);
-        if (screenshotSelector == null) {
+        if (screenshotSelector != null) {
             parentContainer.getChildren().remove(screenshotSelector.getMagnifier());
             parentContainer.getChildren().add(screenshotSelector.getMagnifier());
         }
@@ -575,31 +635,33 @@ public class FloatingToolbar {
     }
 
     private void createSticker() {
-        // 创建贴图
-        ImageView sticker = new ImageView(snapshotScreen());
+        // 创建贴图面板
+        WritableImage screenImage = snapshotScreen();
+        stickerPane = new StickerPane(screenImage, stickerStage.getRoot());
+
+        // 设置贴图初始大小为选区大小
+        stickerPane.setSize(selectionArea.getWidth(), selectionArea.getHeight());
 
         // 获取选区的屏幕坐标
         Point2D screenPoint = selectionArea.localToScreen(selectionArea.getX(), selectionArea.getY());
-
-        // 设置贴图初始大小为选区大小
-        sticker.setFitWidth(selectionArea.getWidth());
-        sticker.setFitHeight(selectionArea.getHeight());
 
         // 将屏幕坐标转换为相对于贴图窗口的坐标
         Point2D stagePoint = stickerStage.getRoot().screenToLocal(screenPoint.getX(), screenPoint.getY());
         
         // 设置贴图初始位置（使用相对于贴图窗口的坐标）
-        sticker.setLayoutX(stagePoint.getX());
-        sticker.setLayoutY(stagePoint.getY());
+        stickerPane.setLayoutX(stagePoint.getX());
+        stickerPane.setLayoutY(stagePoint.getY());
 
         // 添加到贴图窗口并显示
-        stickerStage.addSticker(sticker);
+        stickerStage.addSticker(stickerPane);
 
         // 清理截图选择器
         cancleSelection();
+
+        stickerPane.setToolbar(stickerStage.getRoot());
     }
 
-    private void cancleSelection()  {
+    private void cancleSelection() {
         if (screenshotSelector != null) {
             screenshotSelector.cancelSelection();
         }

@@ -6,6 +6,7 @@ import com.github.sticker.feature.widget.StickerContextMenu;
 import com.github.sticker.feature.widget.StickerScaleLabel;
 import com.github.sticker.feature.widget.BorderEffect;
 import com.github.sticker.feature.widget.StickerScaleHandler;
+import com.github.sticker.feature.widget.StickerPane;
 import javafx.animation.FadeTransition;
 import javafx.animation.KeyFrame;
 import javafx.animation.KeyValue;
@@ -31,6 +32,8 @@ import javafx.util.Duration;
 import javax.imageio.ImageIO;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
@@ -44,9 +47,7 @@ public class StickerStage {
     private Pane root;
     private Rectangle2D totalBounds;
     private StickerContextMenu contextMenu;
-
-    // 绘图工具栏相关
-    private DrawingToolbar currentToolbar;
+    private final List<StickerPane> stickerStageList = new ArrayList<>();
 
     public static StickerStage getInstance() {
         if (instance == null) {
@@ -204,15 +205,18 @@ public class StickerStage {
         scene.getStylesheets().add(
                 Objects.requireNonNull(getClass().getResource("/styles/sticker.css")).toExternalForm()
         );
+        scene.getStylesheets().add(
+                Objects.requireNonNull(getClass().getResource("/styles/index.css")).toExternalForm()
+        );
     }
 
-    public void addSticker(ImageView sticker) {
+    public void addSticker(StickerPane stickerPane) {
         // 创建边框效果
-        BorderEffect borderEffect = new BorderEffect(sticker);
-        sticker.getProperties().put("borderEffect", borderEffect);
-        
-        setupStickerBehavior(sticker);
-        root.getChildren().add(sticker);
+        BorderEffect borderEffect = new BorderEffect(stickerPane.getImageView());
+        stickerPane.getProperties().put("borderEffect", borderEffect);
+        stickerStageList.add(stickerPane);
+        setupStickerBehavior(stickerPane);
+        root.getChildren().add(stickerPane);
         
         // 播放初始呼吸动画
         borderEffect.playBreathingAnimation();
@@ -223,7 +227,7 @@ public class StickerStage {
         stage.toFront();
     }
 
-    private void setupStickerBehavior(ImageView sticker) {
+    private void setupStickerBehavior(StickerPane stickerPane) {
         final double MIN_SCALE = 0.1;
         final double MAX_SCALE = 5.0;  // 限制最大缩放比例为 500%
 
@@ -231,27 +235,27 @@ public class StickerStage {
         Delta dragDelta = new Delta();
 
         // 创建和设置工具栏
-        setupToolbar(sticker);
+       // setupToolbar(stickerPane.getImageView());
 
         // 创建缩放标签
-        StickerScaleLabel scaleLabel = new StickerScaleLabel(sticker);
+        StickerScaleLabel scaleLabel = new StickerScaleLabel(stickerPane.getImageView());
         root.getChildren().add(scaleLabel);
 
         // 创建缩放处理器
-        StickerScaleHandler scaleHandler = new StickerScaleHandler(sticker, scaleLabel, MIN_SCALE, MAX_SCALE);
-        sticker.getProperties().put("scaleHandler", scaleHandler);
+        StickerScaleHandler scaleHandler = new StickerScaleHandler(stickerPane.getImageView(), scaleLabel, MIN_SCALE, MAX_SCALE);
+        stickerPane.getProperties().put("scaleHandler", scaleHandler);
 
         // 设置基本属性
-        setupBasicProperties(sticker);
+        setupBasicProperties(stickerPane);
 
         // 设置鼠标事件处理
-        setupMouseHandlers(sticker, dragDelta);
+        setupMouseHandlers(stickerPane, dragDelta);
     }
 
     private void setupToolbar(ImageView sticker) {
         DrawingToolbar toolbar = new DrawingToolbar(sticker);
         toolbar.getProperties().put("owner", sticker);
-        currentToolbar = toolbar;
+        // currentToolbar = toolbar;
 
         // 添加工具栏到根节点
         root.getChildren().add(toolbar);
@@ -269,75 +273,75 @@ public class StickerStage {
         );
     }
 
-    private void setupBasicProperties(ImageView sticker) {
-        sticker.setPickOnBounds(true);
-        sticker.setMouseTransparent(false);
-        sticker.setOnContextMenuRequested(null);  // 防止双触发
+    private void setupBasicProperties(StickerPane stickerPane) {
+        stickerPane.setPickOnBounds(true);
+        stickerPane.setMouseTransparent(false);
+        stickerPane.setOnContextMenuRequested(null);  // 防止双触发
     }
 
-    private void setupMouseHandlers(ImageView sticker, Delta dragDelta) {
-        sticker.setOnMousePressed(e -> handleMousePressed(sticker, e, dragDelta));
-        sticker.setOnMouseDragged(e -> handleMouseDragged(sticker, e, dragDelta));
-        sticker.setOnMouseReleased(e -> {
-            sticker.setCursor(Cursor.DEFAULT);
+    private void setupMouseHandlers(StickerPane stickerPane, Delta dragDelta) {
+        stickerPane.setOnMousePressed(e -> handleMousePressed(stickerPane, e, dragDelta));
+        stickerPane.setOnMouseDragged(e -> handleMouseDragged(stickerPane, e, dragDelta));
+        stickerPane.setOnMouseReleased(e -> {
+            stickerPane.setCursor(Cursor.DEFAULT);
             e.consume();
         });
     }
 
-    private void handleMousePressed(ImageView sticker, javafx.scene.input.MouseEvent e, Delta dragDelta) {
+    private void handleMousePressed(StickerPane stickerPane, javafx.scene.input.MouseEvent e, Delta dragDelta) {
         if (e.isPrimaryButtonDown()) {
-            handlePrimaryButtonPress(sticker, e, dragDelta);
+            handlePrimaryButtonPress(stickerPane, e, dragDelta);
         } else if (e.isSecondaryButtonDown()) {
-            handleSecondaryButtonPress(sticker, e);
+            handleSecondaryButtonPress(stickerPane, e);
         }
         e.consume();
     }
 
-    private void handlePrimaryButtonPress(ImageView sticker, javafx.scene.input.MouseEvent e, Delta dragDelta) {
+    private void handlePrimaryButtonPress(StickerPane stickerPane, javafx.scene.input.MouseEvent e, Delta dragDelta) {
         // 如果菜单正在显示，先隐藏菜单并禁用缩放
         if (contextMenu != null && contextMenu.isShowing()) {
             contextMenu.hide();
-            StickerScaleHandler scaleHandler = (StickerScaleHandler) sticker.getProperties().get("scaleHandler");
+            StickerScaleHandler scaleHandler = (StickerScaleHandler) stickerPane.getProperties().get("scaleHandler");
             if (scaleHandler != null) {
                 scaleHandler.setEnabled(true);
             }
         }
 
-        // 记录鼠标点击位置相对于图片的偏移
-        dragDelta.x = e.getSceneX() - sticker.getLayoutX();
-        dragDelta.y = e.getSceneY() - sticker.getLayoutY();
-        sticker.setCursor(Cursor.MOVE);
+        // 记录鼠标点击位置相对于贴图的偏移
+        dragDelta.x = e.getSceneX() - stickerPane.getLayoutX();
+        dragDelta.y = e.getSceneY() - stickerPane.getLayoutY();
+        stickerPane.setCursor(Cursor.MOVE);
 
         // 请求焦点并置于顶层
-        sticker.requestFocus();
-        sticker.toFront();
+        stickerPane.requestFocus();
+        stickerPane.toFront();
 
         // 更新其他贴图的状态
-        updateOtherStickersState(sticker);
+        updateOtherStickersState(stickerPane);
     }
 
-    private void handleSecondaryButtonPress(ImageView sticker, javafx.scene.input.MouseEvent e) {
+    private void handleSecondaryButtonPress(StickerPane stickerPane, javafx.scene.input.MouseEvent e) {
         if (contextMenu != null && contextMenu.isShowing()) {
             contextMenu.hide();
         }
         // 显示菜单时禁用缩放
-        StickerScaleHandler scaleHandler = (StickerScaleHandler) sticker.getProperties().get("scaleHandler");
+        StickerScaleHandler scaleHandler = (StickerScaleHandler) stickerPane.getProperties().get("scaleHandler");
         if (scaleHandler != null) {
             scaleHandler.setEnabled(false);
         }
         
         // 更新属性并显示菜单
-        contextMenu.show(sticker, e.getScreenX(), e.getScreenY());
-        sticker.requestFocus();
-        sticker.toFront();
+        contextMenu.show(stickerPane.getImageView(), e.getScreenX(), e.getScreenY());
+        stickerPane.requestFocus();
+        stickerPane.toFront();
     }
 
-    private void handleMouseDragged(ImageView sticker, javafx.scene.input.MouseEvent e, Delta dragDelta) {
+    private void handleMouseDragged(StickerPane stickerPane, javafx.scene.input.MouseEvent e, Delta dragDelta) {
         if (e.isPrimaryButtonDown()) {
             double newX = e.getSceneX() - dragDelta.x;
             double newY = e.getSceneY() - dragDelta.y;
-            sticker.setLayoutX(newX);
-            sticker.setLayoutY(newY);
+            stickerPane.setLayoutX(newX);
+            stickerPane.setLayoutY(newY);
         }
         e.consume();
     }
@@ -358,10 +362,10 @@ public class StickerStage {
         }
     }
 
-    private void updateOtherStickersState(ImageView activeSticker) {
+    private void updateOtherStickersState(StickerPane activeSticker) {
         // 将其他贴图设置为非活跃状态
         root.getChildren().forEach(node -> {
-            if (node instanceof ImageView otherSticker && node != activeSticker) {
+            if (node instanceof StickerPane otherSticker && node != activeSticker) {
                 BorderEffect effect = (BorderEffect) otherSticker.getProperties().get("borderEffect");
                 if (effect != null) {
                     effect.setActive(false);

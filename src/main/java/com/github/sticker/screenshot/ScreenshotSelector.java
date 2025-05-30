@@ -508,7 +508,7 @@ public class ScreenshotSelector {
         }
 
         magnifier.update((int) event.getScreenX(), (int) event.getScreenY());
-        floatingToolbar = new FloatingToolbar(selectionArea, root, drawCanvasArea, this);
+        floatingToolbar = new FloatingToolbar(selectionArea, root, drawCanvasArea, this, null);
     }
 
     private void updateSelectionAreaPosition() {
