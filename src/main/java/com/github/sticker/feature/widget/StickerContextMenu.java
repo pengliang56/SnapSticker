@@ -11,6 +11,7 @@ import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
+import javafx.scene.shape.Rectangle;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.embed.swing.SwingFXUtils;
@@ -201,9 +202,15 @@ public class StickerContextMenu extends ContextMenu {
     private void handleRotation(javafx.event.ActionEvent e, double angle) {
         if (e.getTarget() instanceof MenuItem menuItem) {
             if (menuItem.getParentMenu().getParentPopup().getOwnerNode() instanceof ImageView sticker) {
-                sticker.setRotate((sticker.getRotate() + angle) % 360);
-                updateStickerSize(sticker);
-                hide();
+                Rectangle frame = (Rectangle) sticker.getParent().getChildrenUnmodifiable().stream()
+                        .filter(node -> node instanceof Rectangle)
+                        .findFirst()
+                        .orElse(null);
+                if (frame != null) {
+                    frame.setRotate((frame.getRotate() + angle) % 360);
+                    updateStickerSize(sticker);
+                    hide();
+                }
             }
         }
     }
@@ -211,12 +218,18 @@ public class StickerContextMenu extends ContextMenu {
     private void handleFlip(javafx.event.ActionEvent e, boolean horizontal) {
         if (e.getTarget() instanceof MenuItem menuItem) {
             if (menuItem.getParentMenu().getParentPopup().getOwnerNode() instanceof ImageView sticker) {
-                if (horizontal) {
-                    sticker.setScaleX(sticker.getScaleX() * -1);
-                } else {
-                    sticker.setScaleY(sticker.getScaleY() * -1);
+                Rectangle frame = (Rectangle) sticker.getParent().getChildrenUnmodifiable().stream()
+                        .filter(node -> node instanceof Rectangle)
+                        .findFirst()
+                        .orElse(null);
+                if (frame != null) {
+                    if (horizontal) {
+                        frame.setScaleX(frame.getScaleX() * -1);
+                    } else {
+                        frame.setScaleY(frame.getScaleY() * -1);
+                    }
+                    hide();
                 }
-                hide();
             }
         }
     }
@@ -320,8 +333,14 @@ public class StickerContextMenu extends ContextMenu {
         if (e.getTarget() instanceof CheckMenuItem menuItem) {
             if (menuItem.getParentPopup().getOwnerNode() instanceof ImageView sticker) {
                 boolean isShown = menuItem.isSelected();
-                sticker.getProperties().put("shadow", isShown);
-                updateShadowEffect(sticker, isShown);
+                Rectangle frame = (Rectangle) sticker.getParent().getChildrenUnmodifiable().stream()
+                        .filter(node -> node instanceof Rectangle)
+                        .findFirst()
+                        .orElse(null);
+                if (frame != null) {
+                    frame.getProperties().put("shadow", isShown);
+                    updateShadowEffect(sticker, isShown);
+                }
             }
         }
     }
@@ -352,11 +371,10 @@ public class StickerContextMenu extends ContextMenu {
     }
 
     private void removeSticker(ImageView sticker) {
-        root.getChildren().removeIf(node -> 
-            (node instanceof DrawingToolbar && node.getProperties().get("owner") == sticker) ||
-            (node instanceof Label && node.getProperties().get("owner") == sticker)
-        );
-        root.getChildren().remove(sticker);
+        // 获取包含 ImageView 的 StickerPane
+        if (sticker.getParent() instanceof StickerPane stickerPane) {
+            stickerPane.destroy();  // 调用destroy方法清理资源并移除
+        }
     }
 
     private FileChooser createImageFileChooser() {
@@ -458,18 +476,26 @@ public class StickerContextMenu extends ContextMenu {
             sizeMenu.getItems().get(0).setText(String.format("Zoom: %.0f%%", scale * 100));
         }
         
-        // Update other properties
-        double opacity = sticker.getOpacity();
-        opacityItem.setText(String.format("Opacity: %d%%", (int)(opacity * 100)));
-
-        double rotation = sticker.getRotate();
-        rotationItem.setText(String.format("Rotation: %.1f°", rotation));
-
-        boolean isInverted = sticker.getEffect() instanceof ColorAdjust;
-        invertedItem.setText("Color inverted: " + (isInverted ? "Yes" : "No"));
+        // Get the frame
+        Rectangle frame = (Rectangle) sticker.getParent().getChildrenUnmodifiable().stream()
+                .filter(node -> node instanceof Rectangle)
+                .findFirst()
+                .orElse(null);
         
-        // Update shadow state
-        shownItem.setSelected(Boolean.TRUE.equals(sticker.getProperties().get("shadow")));
+        if (frame != null) {
+            // Update other properties
+            double opacity = frame.getOpacity();
+            opacityItem.setText(String.format("Opacity: %d%%", (int)(opacity * 100)));
+
+            double rotation = frame.getRotate();
+            rotationItem.setText(String.format("Rotation: %.1f°", rotation));
+
+            boolean isInverted = frame.getEffect() instanceof ColorAdjust;
+            invertedItem.setText("Color inverted: " + (isInverted ? "Yes" : "No"));
+            
+            // Update shadow state
+            shownItem.setSelected(Boolean.TRUE.equals(frame.getProperties().get("shadow")));
+        }
     }
 
     private double calculateScale(ImageView sticker) {

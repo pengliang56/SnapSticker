@@ -1,41 +1,24 @@
 package com.github.sticker.feature;
 
-import com.github.sticker.util.StealthWindow;
 import com.github.sticker.draw.DrawingToolbar;
-import com.github.sticker.feature.widget.StickerContextMenu;
-import com.github.sticker.feature.widget.StickerScaleLabel;
-import com.github.sticker.feature.widget.BorderEffect;
-import com.github.sticker.feature.widget.StickerScaleHandler;
-import com.github.sticker.feature.widget.StickerPane;
-import javafx.animation.FadeTransition;
-import javafx.animation.KeyFrame;
-import javafx.animation.KeyValue;
-import javafx.animation.Timeline;
-import javafx.embed.swing.SwingFXUtils;
+import com.github.sticker.feature.widget.*;
+import com.github.sticker.util.ScreenManager;
+import com.github.sticker.util.StealthWindow;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.CacheHint;
 import javafx.scene.Cursor;
 import javafx.scene.Scene;
-import javafx.scene.Node;
-import javafx.scene.control.*;
-import javafx.scene.effect.DropShadow;
-import javafx.scene.effect.ColorAdjust;
-import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
-import javafx.scene.text.Font;
-import javafx.scene.text.FontWeight;
-import javafx.stage.*;
-import javafx.util.Duration;
+import javafx.stage.Screen;
+import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 
-import javax.imageio.ImageIO;
-import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
 
 /**
  * 贴图窗口管理类
@@ -106,13 +89,10 @@ public class StickerStage {
         root.setCache(true);
         root.setCacheHint(CacheHint.SPEED);
         root.setStyle("-fx-background-color: transparent;");
-
+        root.setPickOnBounds(false);
         // 创建场景
         Scene scene = new Scene(root);
-        scene.setFill(Color.rgb(0, 0, 0, 0.00));
-        scene.getStylesheets().add(
-                Objects.requireNonNull(getClass().getResource("/styles/sticker.css")).toExternalForm()
-        );
+        scene.setFill(null);
 
         stage.setScene(scene);
         StealthWindow.configure(stage);
@@ -212,19 +192,16 @@ public class StickerStage {
 
     public void addSticker(StickerPane stickerPane) {
         // 创建边框效果
-        BorderEffect borderEffect = new BorderEffect(stickerPane.getImageView());
-        stickerPane.getProperties().put("borderEffect", borderEffect);
         stickerStageList.add(stickerPane);
         setupStickerBehavior(stickerPane);
         root.getChildren().add(stickerPane);
-        
-        // 播放初始呼吸动画
-        borderEffect.playBreathingAnimation();
-        
-        // 确保窗口显示并置顶
         stage.show();
         stage.setAlwaysOnTop(true);
         stage.toFront();
+
+        BorderEffect borderEffect = new BorderEffect(stickerPane.getFrame());
+        stickerPane.getProperties().put("borderEffect", borderEffect);
+        borderEffect.playBreathingAnimation();
     }
 
     private void setupStickerBehavior(StickerPane stickerPane) {
@@ -234,15 +211,12 @@ public class StickerStage {
         // 用于记录拖拽的偏移量
         Delta dragDelta = new Delta();
 
-        // 创建和设置工具栏
-       // setupToolbar(stickerPane.getImageView());
-
         // 创建缩放标签
         StickerScaleLabel scaleLabel = new StickerScaleLabel(stickerPane.getImageView());
         root.getChildren().add(scaleLabel);
 
         // 创建缩放处理器
-        StickerScaleHandler scaleHandler = new StickerScaleHandler(stickerPane.getImageView(), scaleLabel, MIN_SCALE, MAX_SCALE);
+        StickerScaleHandler scaleHandler = new StickerScaleHandler(stickerPane.getFrame(), scaleLabel, MIN_SCALE, MAX_SCALE);
         stickerPane.getProperties().put("scaleHandler", scaleHandler);
 
         // 设置基本属性
@@ -262,14 +236,14 @@ public class StickerStage {
 
         // 绑定工具栏位置到贴图底部右侧，保持5px间距
         toolbar.layoutXProperty().bind(
-            sticker.layoutXProperty()
-                .add(sticker.fitWidthProperty())
-                .subtract(toolbar.widthProperty())
+                sticker.layoutXProperty()
+                        .add(sticker.fitWidthProperty())
+                        .subtract(toolbar.widthProperty())
         );
         toolbar.layoutYProperty().bind(
-            sticker.layoutYProperty()
-                .add(sticker.fitHeightProperty())
-                .add(5)
+                sticker.layoutYProperty()
+                        .add(sticker.fitHeightProperty())
+                        .add(5)
         );
     }
 
@@ -329,7 +303,7 @@ public class StickerStage {
         if (scaleHandler != null) {
             scaleHandler.setEnabled(false);
         }
-        
+
         // 更新属性并显示菜单
         contextMenu.show(stickerPane.getImageView(), e.getScreenX(), e.getScreenY());
         stickerPane.requestFocus();
@@ -378,6 +352,14 @@ public class StickerStage {
         if (effect != null) {
             effect.setActive(true);
         }
+    }
+
+    /**
+     * 获取贴图列表
+     * @return 贴图列表
+     */
+    public List<StickerPane> getStickerStageList() {
+        return stickerStageList;
     }
 
     private static class Delta {

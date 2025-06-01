@@ -4,6 +4,7 @@ import javafx.animation.FadeTransition;
 import javafx.scene.Cursor;
 import javafx.scene.control.Label;
 import javafx.scene.image.ImageView;
+import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.util.Duration;
@@ -14,10 +15,14 @@ import javafx.util.Duration;
  */
 public class StickerScaleLabel extends Label {
     private final FadeTransition fadeOut;
-    private final ImageView owner;
+    private final Rectangle owner;
 
-    public StickerScaleLabel(ImageView owner) {
-        this.owner = owner;
+    public StickerScaleLabel(ImageView imageView) {
+        // 获取imageView的父容器中的Rectangle
+        this.owner = (Rectangle) imageView.getParent().getChildrenUnmodifiable().stream()
+                .filter(node -> node instanceof Rectangle)
+                .findFirst()
+                .orElse(null);
         
         // Setup label appearance
         setupStyle();
@@ -55,8 +60,10 @@ public class StickerScaleLabel extends Label {
     }
 
     private void setupPositionBinding() {
-        layoutXProperty().bind(owner.layoutXProperty());
-        layoutYProperty().bind(owner.layoutYProperty().subtract(25));
+        if (owner != null) {
+            layoutXProperty().bind(owner.layoutXProperty());
+            layoutYProperty().bind(owner.layoutYProperty().subtract(25));
+        }
     }
 
     /**
@@ -89,10 +96,10 @@ public class StickerScaleLabel extends Label {
     }
 
     /**
-     * Get the ImageView that owns this label
-     * @return The owner ImageView
+     * Get the Rectangle that owns this label
+     * @return The owner Rectangle
      */
-    public ImageView getOwner() {
+    public Rectangle getOwner() {
         return owner;
     }
 } 

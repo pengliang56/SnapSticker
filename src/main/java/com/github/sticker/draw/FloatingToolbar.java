@@ -392,85 +392,15 @@ public class FloatingToolbar {
 
     private void initializeToolbar() {
         createButtons();
-        if(selectionArea == null) {
-            setupImageViewToolbarBinding(stickerPane.getImageView());
-        } else {
-            setupBottomPositionBinding();
-        }
+        setupBottomPositionBinding();
         setupKeyboardToggle();
 
         toolbar.getStyleClass().add("toolbar");
         toolbar.setPickOnBounds(false);
     }
 
-    private void setupImageViewToolbarBinding(ImageView imageView) {
-        // X轴定位（保持居中且防止左右溢出）
-        toolbar.layoutXProperty().bind(
-                Bindings.createDoubleBinding(() -> {
-                            // 获取ImageView在父容器中的边界
-                            Bounds bounds = imageView.getBoundsInParent();
-                            System.out.println("bounds: " + bounds);
-                            // 计算理想居中位置
-                            double idealX = bounds.getMinX() +
-                                    (bounds.getWidth() - toolbar.getWidth()) / 2;
-
-                            // 边界约束
-                            double minX = 5;
-                            double maxX = parentContainer.getWidth() - toolbar.getWidth() - 5;
-
-                            return Math.max(minX, Math.min(idealX, maxX));
-                        },
-                        imageView.boundsInParentProperty(),
-                        toolbar.widthProperty(),
-                        parentContainer.widthProperty())
-        );
-
-        // Y轴动态定位（上下自动切换）
-        toolbar.layoutYProperty().bind(
-                Bindings.createDoubleBinding(() -> {
-                            // 获取ImageView在父容器中的边界
-                            Bounds bounds = imageView.getBoundsInParent();
-                            System.out.println("bounds: " + bounds);
-
-                            // 基础参数计算
-                            double imageBottom = bounds.getMinY() + bounds.getHeight();
-                            double toolbarHeight = toolbar.getHeight();
-                            double parentHeight = parentContainer.getHeight();
-
-                            // 默认下方位置
-                            double bottomPosition = imageBottom + 10;
-
-                            // 上方位置
-                            double topPosition = bounds.getMinY() - toolbarHeight - 10;
-
-                            // 检测下方空间是否足够
-                            boolean canShowBelow = (bottomPosition + toolbarHeight) < (parentHeight - 5);
-
-                            // 智能选择显示位置
-                            return canShowBelow ? bottomPosition : topPosition;
-                        },
-                        imageView.boundsInParentProperty(),
-                        parentContainer.heightProperty(),
-                        toolbar.heightProperty())
-        );
-    }
-
     private void setupBottomPositionBinding() {
-        toolbar.layoutXProperty().bind(
-                Bindings.createDoubleBinding(() ->
-                                selectionArea.getX() + (selectionArea.getWidth() / 2) - (toolbar.getWidth() / 2),
-                        selectionArea.xProperty(), selectionArea.widthProperty(), toolbar.widthProperty()
-                )
-        );
-
-        // Y轴位置：选区底部 + 10px 间距
-        toolbar.layoutYProperty().bind(
-                selectionArea.yProperty()
-                        .add(selectionArea.heightProperty())
-                        .add(10)
-        );
-
-        // X轴定位（保持居中且防止左右溢出）
+        // 原有的绑定代码
         toolbar.layoutXProperty().bind(
                 Bindings.createDoubleBinding(() -> {
                             // 计算理想居中位置
@@ -638,7 +568,6 @@ public class FloatingToolbar {
         // 创建贴图面板
         WritableImage screenImage = snapshotScreen();
         stickerPane = new StickerPane(screenImage, stickerStage.getRoot());
-
         // 设置贴图初始大小为选区大小
         stickerPane.setSize(selectionArea.getWidth(), selectionArea.getHeight());
 
@@ -647,10 +576,8 @@ public class FloatingToolbar {
 
         // 将屏幕坐标转换为相对于贴图窗口的坐标
         Point2D stagePoint = stickerStage.getRoot().screenToLocal(screenPoint.getX(), screenPoint.getY());
-        
-        // 设置贴图初始位置（使用相对于贴图窗口的坐标）
-        stickerPane.setLayoutX(stagePoint.getX());
-        stickerPane.setLayoutY(stagePoint.getY());
+
+        stickerPane.setPosition(stagePoint.getX(), stagePoint.getY());
 
         // 添加到贴图窗口并显示
         stickerStage.addSticker(stickerPane);
@@ -665,5 +592,36 @@ public class FloatingToolbar {
         if (screenshotSelector != null) {
             screenshotSelector.cancelSelection();
         }
+    }
+
+    /**
+     * 销毁工具栏及其所有资源
+     */
+    public void destroy() {
+        // 移除工具栏
+        if (parentContainer != null) {
+            parentContainer.getChildren().remove(toolbar);
+            parentContainer.getChildren().remove(subToolbar);
+            
+            // 移除事件监听
+            parentContainer.setOnMouseClicked(null);
+            parentContainer.setFocusTraversable(false);
+        }
+
+        // 清理绑定
+        toolbar.layoutXProperty().unbind();
+        toolbar.layoutYProperty().unbind();
+        subToolbar.layoutXProperty().unbind();
+        subToolbar.layoutYProperty().unbind();
+
+        // 重置工具栏状态
+        drawCanvas.setCursor(Cursor.DEFAULT);
+        activeButton = null;
+        currentMode = DrawMode.NONE;
+        drawMode = false;
+        
+        // 清空工具栏内容
+        toolbar.getChildren().clear();
+        subToolbar.getChildren().clear();
     }
 }

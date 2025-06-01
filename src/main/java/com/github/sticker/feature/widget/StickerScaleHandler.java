@@ -2,6 +2,7 @@ package com.github.sticker.feature.widget;
 
 import javafx.scene.image.ImageView;
 import javafx.scene.input.ScrollEvent;
+import javafx.scene.shape.Rectangle;
 
 /**
  * 处理贴图缩放功能的组件。
@@ -9,7 +10,7 @@ import javafx.scene.input.ScrollEvent;
  * 缩放速率会随着当前缩放值的增大而逐渐减小。
  */
 public class StickerScaleHandler {
-    private final ImageView sticker;
+    private final Rectangle frame;
     private final StickerScaleLabel scaleLabel;
     private final double minScale;
     private final double maxScale;
@@ -27,34 +28,28 @@ public class StickerScaleHandler {
 
     /**
      * 创建缩放处理器
-     * @param sticker 要处理的贴图
+     * @param frame 要处理的容器
      * @param scaleLabel 显示缩放比例的标签
      * @param minScale 最小缩放比例
      * @param maxScale 最大缩放比例
      */
-    public StickerScaleHandler(ImageView sticker, StickerScaleLabel scaleLabel, 
+    public StickerScaleHandler(Rectangle frame, StickerScaleLabel scaleLabel, 
                              double minScale, double maxScale) {
-        this.sticker = sticker;
+        this.frame = frame;
         this.scaleLabel = scaleLabel;
         this.minScale = minScale;
         this.maxScale = maxScale;
         
         // 记录原始尺寸
-        this.originalWidth = sticker.getFitWidth() > 0 ? 
-            sticker.getFitWidth() : sticker.getImage().getWidth();
-        this.originalHeight = sticker.getFitHeight() > 0 ? 
-            sticker.getFitHeight() : sticker.getImage().getHeight();
-        
-        // 设置初始尺寸
-        sticker.setFitWidth(originalWidth);
-        sticker.setFitHeight(originalHeight);
+        this.originalWidth = frame.getWidth();
+        this.originalHeight = frame.getHeight();
         
         // 设置滚轮事件处理
         setupScrollHandler();
     }
 
     private void setupScrollHandler() {
-        sticker.setOnScroll(this::handleScroll);
+        frame.setOnScroll(this::handleScroll);
     }
 
     private void handleScroll(ScrollEvent event) {
@@ -118,9 +113,8 @@ public class StickerScaleHandler {
         accumulatedScale = scale;
 
         // 应用新的尺寸
-        sticker.setFitWidth(originalWidth * scale);
-        sticker.setFitHeight(originalHeight * scale);
-        sticker.setPreserveRatio(true);
+        frame.setWidth(originalWidth * scale);
+        frame.setHeight(originalHeight * scale);
 
         // 更新标签显示
         scaleLabel.updateScale(scale);
@@ -163,9 +157,9 @@ public class StickerScaleHandler {
      */
     public void setEnabled(boolean enabled) {
         if (enabled) {
-            sticker.setOnScroll(this::handleScroll);
+            frame.setOnScroll(this::handleScroll);
         } else {
-            sticker.setOnScroll(null);
+            frame.setOnScroll(null);
         }
     }
 } 
