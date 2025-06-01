@@ -5,9 +5,7 @@ import javafx.animation.KeyValue;
 import javafx.animation.Timeline;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
-import javafx.scene.Node;
 import javafx.scene.effect.DropShadow;
-import javafx.scene.input.MouseEvent;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.util.Duration;
@@ -37,32 +35,31 @@ public class BorderEffect {
         effect.setRadius(10);
         effect.setSpread(0.4);
         effect.setColor(ACTIVE_COLOR);
-        
+
         // 设置初始效果
         if (target != null) {
             // 设置初始属性
             target.getProperties().put("shadow", true);  // 默认显示阴影
             target.getProperties().put("effect", effect);  // 存储效果引用
-            
+
             target.setFill(BACKGROUND_COLOR);
             target.setEffect(effect);
-            
-            // 监听焦点变化
-            target.focusedProperty().addListener((obs, oldVal, newVal) -> {
-                if (newVal) {
-                    effect.setColor(ACTIVE_COLOR);
-                } else {
-                    effect.setColor(DIM_COLOR);
+            target.setFocusTraversable(true);  // 确保可以接收焦点
+            target.setPickOnBounds(true);      // 确保可以接收鼠标事件
+            target.setMouseTransparent(false); // 确保可以接收鼠标事件
+
+            //监听焦点变化
+/*            target.focusedProperty().addListener((obs, oldVal, newVal) -> {
+                System.out.println("Rectangle focused changed: " + newVal);
+                if (shadowEnabled.get()) {
+                    effect.setColor(newVal ? ACTIVE_COLOR : DIM_COLOR);
                 }
-                // if (shadowEnabled.get()) {
-                //     effect.setColor(newVal ? ACTIVE_COLOR : DIM_COLOR);
-                // }
-            });
+            });*/
         }
-        
+
         // 创建呼吸动画
         setupBreathingAnimation();
-        
+
         // 监听shadowEnabled属性
         shadowEnabled.addListener((obs, oldVal, newVal) -> {
             if (target != null) {
@@ -78,18 +75,18 @@ public class BorderEffect {
 
     private void setupBreathingAnimation() {
         breathingAnimation = new Timeline(
-            new KeyFrame(Duration.ZERO,
-                new KeyValue(effect.radiusProperty(), 10),
-                new KeyValue(effect.colorProperty(), ACTIVE_COLOR)),
-            new KeyFrame(Duration.seconds(1),
-                new KeyValue(effect.radiusProperty(), 15),
-                new KeyValue(effect.colorProperty(), Color.rgb(255, 102, 102, 0.8))),
-            new KeyFrame(Duration.seconds(2),
-                new KeyValue(effect.radiusProperty(), 10),
-                new KeyValue(effect.colorProperty(), ACTIVE_COLOR))
+                new KeyFrame(Duration.ZERO,
+                        new KeyValue(effect.radiusProperty(), 10),
+                        new KeyValue(effect.colorProperty(), ACTIVE_COLOR)),
+                new KeyFrame(Duration.seconds(1),
+                        new KeyValue(effect.radiusProperty(), 15),
+                        new KeyValue(effect.colorProperty(), Color.rgb(255, 102, 102, 0.8))),
+                new KeyFrame(Duration.seconds(2),
+                        new KeyValue(effect.radiusProperty(), 10),
+                        new KeyValue(effect.colorProperty(), ACTIVE_COLOR))
         );
         breathingAnimation.setCycleCount(1);  // 只播放一次
-        
+
         // 动画结束后保持高亮状态
         breathingAnimation.setOnFinished(e -> {
             if (target != null) {
@@ -115,6 +112,7 @@ public class BorderEffect {
 
     /**
      * 设置是否启用阴影效果
+     *
      * @param enabled true启用，false禁用
      */
     public void setShadowEnabled(boolean enabled) {
@@ -123,6 +121,7 @@ public class BorderEffect {
 
     /**
      * 获取阴影启用状态
+     *
      * @return 是否启用阴影
      */
     public boolean isShadowEnabled() {
@@ -131,6 +130,7 @@ public class BorderEffect {
 
     /**
      * 获取阴影启用状态属性
+     *
      * @return shadowEnabled属性
      */
     public BooleanProperty shadowEnabledProperty() {
@@ -139,6 +139,7 @@ public class BorderEffect {
 
     /**
      * 设置活跃状态
+     *
      * @param active true为活跃状态，false为非活跃状态
      */
     public void setActive(boolean active) {
@@ -149,6 +150,7 @@ public class BorderEffect {
 
     /**
      * 获取当前效果对象
+     *
      * @return DropShadow效果对象
      */
     public DropShadow getEffect() {

@@ -12,8 +12,8 @@ import javafx.scene.shape.Rectangle;
 public class StickerScaleHandler {
     private final Rectangle frame;
     private final StickerScaleLabel scaleLabel;
-    private final double minScale;
-    private final double maxScale;
+    private static final double minScale = 0.1;
+    private static final double maxScale = 5.0;
     private double accumulatedScale = 1.0;
     private final double originalWidth;
     private final double originalHeight;
@@ -30,15 +30,10 @@ public class StickerScaleHandler {
      * 创建缩放处理器
      * @param frame 要处理的容器
      * @param scaleLabel 显示缩放比例的标签
-     * @param minScale 最小缩放比例
-     * @param maxScale 最大缩放比例
      */
-    public StickerScaleHandler(Rectangle frame, StickerScaleLabel scaleLabel, 
-                             double minScale, double maxScale) {
+    public StickerScaleHandler(Rectangle frame, StickerScaleLabel scaleLabel) {
         this.frame = frame;
         this.scaleLabel = scaleLabel;
-        this.minScale = minScale;
-        this.maxScale = maxScale;
         
         // 记录原始尺寸
         this.originalWidth = frame.getWidth();

@@ -1,20 +1,13 @@
 package com.github.sticker.feature.widget;
 
 import com.github.sticker.draw.DrawCanvas;
-import com.github.sticker.draw.DrawingToolbar;
 import com.github.sticker.draw.FloatingToolbar;
-import com.github.sticker.feature.StickerStage;
-import com.github.sticker.feature.widget.BorderEffect;
-import javafx.scene.Node;
 import javafx.scene.image.ImageView;
+import javafx.scene.image.WritableImage;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
-import javafx.scene.image.WritableImage;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
-import javafx.scene.input.MouseEvent;
-
-import java.util.List;
 
 /**
  * 贴图面板
@@ -26,20 +19,17 @@ public class StickerPane extends StackPane {
     private FloatingToolbar floatingToolbar;
     private Pane root;
     private final Rectangle frame;
-    private Runnable onDestroyCallback;
-    private final StickerStage stickerStage;
 
     double MAX_WIDTH = 8000;
     double MAX_HEIGHT = 6000;
 
     public StickerPane(WritableImage image, Pane root) {
         this.root = root;
-        this.stickerStage = StickerStage.getInstance();
-        
+
         frame = new Rectangle();
         frame.setFocusTraversable(true);
         frame.setFill(Color.TRANSPARENT);
-        
+
         // 设置图片显示
         imageView = new ImageView(image);
         imageView.setPreserveRatio(true);
@@ -48,60 +38,39 @@ public class StickerPane extends StackPane {
         imageView.setPickOnBounds(false);     // 禁用边界拾取
         imageView.setFocusTraversable(false); // 禁用焦点遍历
 
+        BorderEffect borderEffect = new BorderEffect(frame);
+        frame.getProperties().put("borderEffect", borderEffect);
+        borderEffect.playBreathingAnimation();
+
         // 创建绘图画布
         drawCanvas = new DrawCanvas();
         drawCanvas.setMouseTransparent(true);  // 初始时画布不接收鼠标事件
-        
+
         // 确保画布和图片大小跟随frame大小
         imageView.fitWidthProperty().bind(frame.widthProperty());
         imageView.fitHeightProperty().bind(frame.heightProperty());
         drawCanvas.prefWidthProperty().bind(frame.widthProperty());
         drawCanvas.prefHeightProperty().bind(frame.heightProperty());
-        
+
         // 添加组件到面板
         getChildren().addAll(frame, imageView, drawCanvas);
-        
+
         // 设置面板样式
         setStyle("-fx-background-color: transparent;");
-        
+
         // 配置初始大小
         configStackPane();
-        
+
         // 绑定frame位置到StackPane的位置
         frame.xProperty().bind(layoutXProperty());
         frame.yProperty().bind(layoutYProperty());
 
-        // 添加鼠标按下事件监听
-        frame.setOnMouseClicked(event -> {
-            // 取消其他贴图的焦点
-            for (StickerPane sticker : stickerStage.getStickerStageList()) {
-                if (sticker != this) {
-                    BorderEffect effect = (BorderEffect) sticker.getProperties().get("borderEffect");
-                    if (effect != null) {
-                        effect.setActive(false);
-                    }
-                }
-            }
-            
-            // 设置当前贴图为活跃状态
-            BorderEffect effect = (BorderEffect) getProperties().get("borderEffect");
-            if (effect != null) {
-                effect.setActive(true);
-            }
-            
-            frame.requestFocus(); // 获取焦点
-        });
+        // 创建并设置事件处理器
+        new StickerEventHandler(root, frame, this, borderEffect);
 
-        // 添加面板的鼠标事件监听
-        setOnMousePressed(event -> {
-            // 检查点击是否在frame区域内
-            if (!frame.contains(frame.sceneToLocal(event.getSceneX(), event.getSceneY()))) {
-                // 将焦点转移到父容器来间接取消frame的焦点
-                if (getParent() != null) {
-                    getParent().requestFocus();
-                }
-            }
-        });
+        // 设置基本属性
+        setPickOnBounds(true);
+        setMouseTransparent(false);
     }
 
     private void configStackPane() {
@@ -177,10 +146,10 @@ public class StickerPane extends StackPane {
 
     /**
      * 设置销毁回调，用于通知父容器进行清理
+     *
      * @param callback 销毁时的回调函数
      */
     public void setOnDestroyCallback(Runnable callback) {
-        this.onDestroyCallback = callback;
     }
 
     /**
@@ -190,7 +159,7 @@ public class StickerPane extends StackPane {
     public void destroy() {
         // 清理画布内容
         clearDrawing();
-        
+
         // 解除绑定
         imageView.fitWidthProperty().unbind();
         imageView.fitHeightProperty().unbind();
@@ -201,16 +170,20 @@ public class StickerPane extends StackPane {
 
         // 清理图片资源
         imageView.setImage(null);
-        
+
         // 清理工具栏
         if (floatingToolbar != null) {
             floatingToolbar.destroy();
             floatingToolbar = null;
         }
-        
+
         // 从父容器中移除
         if (getParent() != null) {
             ((Pane) getParent()).getChildren().remove(this);
         }
+    }
+
+    public Pane getRoot() {
+        return root;
     }
 }
