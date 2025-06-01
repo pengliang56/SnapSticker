@@ -1,5 +1,6 @@
 package com.github.sticker.feature.widget;
 
+import com.github.sticker.draw.DrawMode;
 import com.github.sticker.feature.StickerStage;
 import javafx.scene.Cursor;
 import javafx.scene.image.ImageView;
@@ -82,7 +83,6 @@ public class StickerEventHandler {
         
         // 设置焦点事件处理
         frame.focusedProperty().addListener((obs, oldVal, newVal) -> {
-            System.out.println("Rectangle focused changed: " + newVal);
             if (newVal) {
                 handleFocusGained();
             } else {
@@ -92,8 +92,6 @@ public class StickerEventHandler {
     }
 
     private void handleMousePressed(MouseEvent event) {
-        System.out.println("Frame mouse pressed");
-        
         // 记录拖拽起始位置
         dragStartX = event.getSceneX() - stickerPane.getLayoutX();
         dragStartY = event.getSceneY() - stickerPane.getLayoutY();
@@ -110,15 +108,6 @@ public class StickerEventHandler {
                 }
             }
         });
-        
-        // 激活当前贴图的效果
-        borderEffect.setActive(true);
-        
-        // 请求焦点
-        frame.requestFocus();
-        
-        // 将贴图移到最前面
-        stickerPane.toFront();
         
         // 如果是右键点击，不要消费事件，让它继续传播到ContextMenuRequest
         if (!event.isSecondaryButtonDown()) {
@@ -145,16 +134,14 @@ public class StickerEventHandler {
     }
 
     private void handleFocusGained() {
-        // 将贴图移到最前面
         stickerPane.toFront();
-        
-        // 激活边框效果
+        frame.requestFocus();
         borderEffect.setActive(true);
     }
 
     private void handleFocusLost() {
-        // 取消边框效果
         borderEffect.setActive(false);
+        stickerPane.getFloatingToolbar().drawMode(null, DrawMode.NONE);
     }
 
     private void applyZoom(ImageView sticker, double scale) {

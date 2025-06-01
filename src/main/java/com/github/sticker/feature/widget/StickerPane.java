@@ -141,7 +141,7 @@ public class StickerPane extends StackPane {
     }
 
     public void setToolbar(Pane root) {
-        floatingToolbar = new FloatingToolbar(frame, root, drawCanvas, null, this);
+        floatingToolbar = new FloatingToolbar(frame, root, drawCanvas, null, this, false);
     }
 
     /**
@@ -181,6 +181,10 @@ public class StickerPane extends StackPane {
         if (getParent() != null) {
             ((Pane) getParent()).getChildren().remove(this);
         }
+    }
+
+    public FloatingToolbar getFloatingToolbar() {
+        return floatingToolbar;
     }
 
     public Pane getRoot() {

@@ -186,9 +186,6 @@ public class FloatingToolbar {
                 e.consume();
             }
         });
-
-        parentContainer.setFocusTraversable(true);
-        parentContainer.setOnMouseClicked(e -> parentContainer.requestFocus());
     }
 
     private Button createIconButton(String svgPath, String tooltipText) {
@@ -243,7 +240,6 @@ public class FloatingToolbar {
         drawCanvas.setMouseTransparent(!drawMode);
         subToolbar.setMouseTransparent(false);
         toolbar.setMouseTransparent(false);
-
         aiToolbar(selectMode, drawMode);
         if (activeButton != null) {
             activeButton.getStyleClass().remove("active");
@@ -390,13 +386,14 @@ public class FloatingToolbar {
         }
     }
 
-    private void initializeToolbar() {
+    private void initializeToolbar(boolean visiableToobar) {
         createButtons();
         setupBottomPositionBinding();
         setupKeyboardToggle();
 
         toolbar.getStyleClass().add("toolbar");
         toolbar.setPickOnBounds(false);
+        toolbar.setVisible(visiableToobar);
     }
 
     private void setupBottomPositionBinding() {
@@ -500,7 +497,10 @@ public class FloatingToolbar {
                 animation(toolbar, switchDirection).play();
             }
         } else if (selectMode == DrawMode.NONE) {
-            // todo
+            switchDirection = true;
+            FadeTransition animation = animation(toolbar, true);
+            animation.setOnFinished(it -> animation(subToolbar, true).play());
+            animation.play();
         } else {
             FadeTransition animation = animation(toolbar, false);
             if (drawMode) {
@@ -537,14 +537,14 @@ public class FloatingToolbar {
         return drawMode;
     }
 
-    public FloatingToolbar(Rectangle selectionArea, Pane parentContainer, DrawCanvas drawCanvasArea, ScreenshotSelector screenshotSelector, StickerPane stickerPane) {
+    public FloatingToolbar(Rectangle selectionArea, Pane parentContainer, DrawCanvas drawCanvasArea, ScreenshotSelector screenshotSelector, StickerPane stickerPane, boolean visiableToobar) {
         this.drawCanvas = drawCanvasArea;
         this.selectionArea = selectionArea;
         this.stickerPane = stickerPane;
         this.parentContainer = parentContainer;
         this.screenshotSelector = screenshotSelector;
         this.stickerStage = StickerStage.getInstance();  // 使用单例模式获取实例
-        initializeToolbar();
+        initializeToolbar(visiableToobar);
         createSubToolbar();
         setupStickerShortcut();  // 设置贴图快捷键
         parentContainer.getChildren().add(toolbar);

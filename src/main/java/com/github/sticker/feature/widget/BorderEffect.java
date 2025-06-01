@@ -44,17 +44,6 @@ public class BorderEffect {
 
             target.setFill(BACKGROUND_COLOR);
             target.setEffect(effect);
-            target.setFocusTraversable(true);  // 确保可以接收焦点
-            target.setPickOnBounds(true);      // 确保可以接收鼠标事件
-            target.setMouseTransparent(false); // 确保可以接收鼠标事件
-
-            //监听焦点变化
-/*            target.focusedProperty().addListener((obs, oldVal, newVal) -> {
-                System.out.println("Rectangle focused changed: " + newVal);
-                if (shadowEnabled.get()) {
-                    effect.setColor(newVal ? ACTIVE_COLOR : DIM_COLOR);
-                }
-            });*/
         }
 
         // 创建呼吸动画
