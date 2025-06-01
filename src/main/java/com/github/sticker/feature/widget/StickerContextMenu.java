@@ -27,7 +27,7 @@ import java.util.concurrent.CompletableFuture;
  */
 public class StickerContextMenu extends ContextMenu {
     private final Stage stage;
-    private final Pane root;
+    private final StickerPane stickerPane;
     
     // Menu items that need to be accessed
     private final Menu sizeMenu;
@@ -37,9 +37,9 @@ public class StickerContextMenu extends ContextMenu {
     private final MenuItem invertedItem;
     private final MenuItem currentZoomItem;
 
-    public StickerContextMenu(Stage stage, Pane root) {
+    public StickerContextMenu(Stage stage, StickerPane stickerPane) {
         this.stage = stage;
-        this.root = root;
+        this.stickerPane = stickerPane;
         getStyleClass().add("sticker-context-menu");
         
         // Initialize menu items
@@ -317,30 +317,27 @@ public class StickerContextMenu extends ContextMenu {
     private void handleShowToolbar(javafx.event.ActionEvent e) {
         if (e.getTarget() instanceof CheckMenuItem menuItem) {
             if (menuItem.getParentPopup().getOwnerNode() instanceof ImageView sticker) {
-                for (Node node : root.getChildren()) {
+                System.out.println("showing toolbar");
+                /*for (Node node : root.getChildren()) {
                     if (node instanceof DrawingToolbar toolbar && 
                         toolbar.getProperties().get("owner") == sticker) {
                         toolbar.toggleVisibility();
                         menuItem.setSelected(toolbar.isShown());
                         break;
                     }
-                }
+                }*/
             }
         }
     }
 
     private void handleShadowToggle(javafx.event.ActionEvent e) {
         if (e.getTarget() instanceof CheckMenuItem menuItem) {
+            System.out.println("menuItem = " + menuItem.getParentPopup().getOwnerNode());
             if (menuItem.getParentPopup().getOwnerNode() instanceof ImageView sticker) {
                 boolean isShown = menuItem.isSelected();
-                Rectangle frame = (Rectangle) sticker.getParent().getChildrenUnmodifiable().stream()
-                        .filter(node -> node instanceof Rectangle)
-                        .findFirst()
-                        .orElse(null);
-                if (frame != null) {
-                    frame.getProperties().put("shadow", isShown);
-                    updateShadowEffect(sticker, isShown);
-                }
+                System.out.println("isShown = " + menuItem.isSelected());
+                stickerPane.getFrame().getProperties().put("shadow", isShown);
+                updateShadowEffect(sticker, isShown);
             }
         }
     }

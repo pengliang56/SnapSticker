@@ -45,7 +45,7 @@ public class StickerEventHandler {
         StickerScaleHandler scaleHandler = new StickerScaleHandler(stickerPane.getFrame(), scaleLabel);
         stickerPane.getProperties().put("scaleHandler", scaleHandler);
 
-        contextMenu = new StickerContextMenu(stage, root) {
+        contextMenu = new StickerContextMenu(stage, stickerPane) {
             @Override
             protected void applyZoom(ImageView sticker, double scale) {
                 StickerEventHandler.this.applyZoom(sticker, scale);
@@ -69,9 +69,7 @@ public class StickerEventHandler {
 
             // 更新属性并显示菜单
             contextMenu.show(stickerPane.getImageView(), event.getScreenX(), event.getScreenY());
-            stickerPane.requestFocus();
             stickerPane.toFront();
-            event.consume();
         });
     }
 
@@ -141,7 +139,9 @@ public class StickerEventHandler {
 
     private void handleFocusLost() {
         borderEffect.setActive(false);
-        stickerPane.getFloatingToolbar().drawMode(null, DrawMode.NONE);
+        if (stickerPane.getFloatingToolbar() != null) {
+            stickerPane.getFloatingToolbar().drawMode(null, DrawMode.NONE);
+        }
     }
 
     private void applyZoom(ImageView sticker, double scale) {

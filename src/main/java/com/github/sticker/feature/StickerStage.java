@@ -29,7 +29,6 @@ public class StickerStage {
     private Stage stage;
     private Pane root;
     private Rectangle2D totalBounds;
-    private StickerContextMenu contextMenu;
     private final List<StickerPane> stickerStageList = new ArrayList<>();
 
     public static StickerStage getInstance() {
