@@ -13,8 +13,8 @@ public class StickerScaleHandler {
     private static final double minScale = 0.1;
     private static final double maxScale = 5.0;
     private double accumulatedScale = 1.0;
-    private final double originalWidth;
-    private final double originalHeight;
+    private double originalWidth;
+    private double originalHeight;
 
     // 缩放参数
     private static final double BASE_ZOOM_FACTOR = 0.0008;  // 基础缩放因子
@@ -34,6 +34,16 @@ public class StickerScaleHandler {
 
         // 设置滚轮事件处理
         setupScrollHandler();
+
+        stickerPane.getFrame().rotateProperty().addListener((obs, oldValue, newValue) -> {
+            if (Math.abs(newValue.doubleValue()) == 90 || Math.abs(newValue.doubleValue()) == 270) {
+                this.originalWidth = stickerPane.getImageView().getImage().getHeight();
+                this.originalHeight = stickerPane.getImageView().getImage().getWidth();
+            } else {
+                this.originalWidth = stickerPane.getImageView().getImage().getWidth();
+                this.originalHeight = stickerPane.getImageView().getImage().getHeight();
+            }
+        });
     }
 
     private void setupScrollHandler() {
