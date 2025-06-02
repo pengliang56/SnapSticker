@@ -41,11 +41,9 @@ public class StickerEventHandler {
         // 设置初始焦点属性
         frame.setFocusTraversable(true);
         
-        StickerScaleLabel scaleLabel = new StickerScaleLabel(stickerPane.getImageView());
+        StickerScaleLabel scaleLabel = new StickerScaleLabel(stickerPane);
         root.getChildren().add(scaleLabel);
-
-        // 创建缩放处理器
-        StickerScaleHandler scaleHandler = new StickerScaleHandler(stickerPane.getFrame(), scaleLabel);
+        StickerScaleHandler scaleHandler = new StickerScaleHandler(stickerPane, scaleLabel);
         stickerPane.getFrame().getProperties().put("scaleHandler", scaleHandler);
 
         contextMenu = new StickerContextMenu(stage, stickerPane) {

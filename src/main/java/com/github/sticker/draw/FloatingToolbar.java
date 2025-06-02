@@ -7,16 +7,12 @@ import com.github.sticker.util.ShotScreen;
 import javafx.animation.FadeTransition;
 import javafx.beans.binding.Bindings;
 import javafx.embed.swing.SwingFXUtils;
-import javafx.geometry.Bounds;
 import javafx.geometry.Orientation;
 import javafx.geometry.Point2D;
 import javafx.geometry.Pos;
 import javafx.scene.*;
-import javafx.scene.Cursor;
 import javafx.scene.control.*;
-import javafx.scene.control.Button;
 import javafx.scene.effect.DropShadow;
-import javafx.scene.image.ImageView;
 import javafx.scene.image.WritableImage;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
@@ -32,8 +28,6 @@ import javafx.stage.FileChooser;
 import javafx.util.Duration;
 
 import javax.imageio.ImageIO;
-import java.awt.*;
-import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 
@@ -576,7 +570,7 @@ public class FloatingToolbar {
         if (parentContainer != null) {
             parentContainer.getChildren().remove(toolbar);
             parentContainer.getChildren().remove(subToolbar);
-            
+
             // 移除事件监听
             parentContainer.setOnMouseClicked(null);
             parentContainer.setFocusTraversable(false);
@@ -593,7 +587,7 @@ public class FloatingToolbar {
         activeButton = null;
         currentMode = DrawMode.NONE;
         drawMode = false;
-        
+
         // 清空工具栏内容
         toolbar.getChildren().clear();
         subToolbar.getChildren().clear();

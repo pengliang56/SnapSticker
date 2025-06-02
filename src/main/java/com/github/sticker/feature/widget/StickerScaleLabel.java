@@ -17,12 +17,8 @@ public class StickerScaleLabel extends Label {
     private final FadeTransition fadeOut;
     private final Rectangle owner;
 
-    public StickerScaleLabel(ImageView imageView) {
-        // 获取imageView的父容器中的Rectangle
-        this.owner = (Rectangle) imageView.getParent().getChildrenUnmodifiable().stream()
-                .filter(node -> node instanceof Rectangle)
-                .findFirst()
-                .orElse(null);
+    public StickerScaleLabel(StickerPane stickerPane) {
+        this.owner = stickerPane.getFrame();
         
         // Setup label appearance
         setupStyle();
