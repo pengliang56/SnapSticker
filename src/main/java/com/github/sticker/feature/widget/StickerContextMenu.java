@@ -1,5 +1,6 @@
 package com.github.sticker.feature.widget;
 
+import com.github.sticker.draw.DrawMode;
 import com.github.sticker.util.ShotScreen;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.Node;
@@ -31,6 +32,7 @@ public class StickerContextMenu extends ContextMenu {
     // Menu items that need to be accessed
     private final Menu sizeMenu;
     private final CheckMenuItem shownItem;
+    private final CheckMenuItem showToolbarItem;
     private final MenuItem opacityItem;
     private final MenuItem rotationItem;
     private final MenuItem invertedItem;
@@ -44,6 +46,7 @@ public class StickerContextMenu extends ContextMenu {
         // Initialize menu items
         this.sizeMenu = new Menu();
         this.shownItem = new CheckMenuItem("Shadow");
+        this.showToolbarItem = new CheckMenuItem("Show Toolbar");
         this.opacityItem = new MenuItem("Opacity: 100%");
         this.rotationItem = new MenuItem("Rotation: 0°");
         this.invertedItem = new MenuItem("Color inverted: No");
@@ -84,7 +87,6 @@ public class StickerContextMenu extends ContextMenu {
         MenuItem viewFolderItem = new MenuItem("View in folder");
         MenuItem closeItem = new MenuItem("Close and save");
         MenuItem destroyItem = new MenuItem("Destroy");
-        CheckMenuItem showToolbarItem = new CheckMenuItem("Show toolbar");
 
         // Set up event handlers
         setupEventHandlers(copyItem, saveItem, pasteItem, replaceItem,
@@ -298,18 +300,9 @@ public class StickerContextMenu extends ContextMenu {
     }
 
     private void handleShowToolbar(javafx.event.ActionEvent e) {
-        if (e.getTarget() instanceof CheckMenuItem menuItem) {
-            if (menuItem.getParentPopup().getOwnerNode() instanceof ImageView sticker) {
-                System.out.println("showing toolbar");
-                /*for (Node node : root.getChildren()) {
-                    if (node instanceof DrawingToolbar toolbar && 
-                        toolbar.getProperties().get("owner") == sticker) {
-                        toolbar.toggleVisibility();
-                        menuItem.setSelected(toolbar.isShown());
-                        break;
-                    }
-                }*/
-            }
+        if (e.getTarget() instanceof CheckMenuItem) {
+            stickerPane.getFloatingToolbar().drawMode(null, DrawMode.SWITCH);
+            stickerPane.getFrame().getProperties().put("showToolbar", stickerPane.getFloatingToolbar().isSwitchDirection());
         }
     }
 
@@ -464,6 +457,8 @@ public class StickerContextMenu extends ContextMenu {
 
         // Update shadow state
         shownItem.setSelected(Boolean.TRUE.equals(frame.getProperties().get("shadow")));
+
+        showToolbarItem.setSelected(Boolean.TRUE.equals(frame.getProperties().get("showToolbar")));
     }
 
     private double calculateScale(ImageView sticker) {

@@ -71,6 +71,7 @@ public class BorderEffect {
                         new KeyValue(effect.radiusProperty(), 10),
                         new KeyValue(effect.colorProperty(), ACTIVE_COLOR))
         );
+        breathingAnimation.setRate(2);
         breathingAnimation.setCycleCount(1);  // 只播放一次
 
         // 动画结束后保持高亮状态

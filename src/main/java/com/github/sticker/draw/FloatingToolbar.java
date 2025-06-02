@@ -221,6 +221,7 @@ public class FloatingToolbar {
     }
 
     public void drawMode(Button handleButton, DrawMode selectMode) {
+        System.out.println("drawMode " + selectMode);
         drawMode = false;
         switch (selectMode) {
             case PEN, RECTANGLE, LINE -> {
@@ -456,7 +457,7 @@ public class FloatingToolbar {
 
     private void aiToolbar(DrawMode selectMode, boolean drawMode) {
         if (selectMode == DrawMode.SWITCH) {
-            switchDirection = !switchDirection;
+            System.out.println("switchDirection: " + switchDirection);
             if (subToolbar.isVisible()) {
                 FadeTransition subFade = animation(subToolbar, true);
                 subFade.setOnFinished(it -> animation(toolbar, switchDirection).play());
@@ -464,6 +465,12 @@ public class FloatingToolbar {
             } else {
                 animation(toolbar, switchDirection).play();
             }
+            switchDirection = !switchDirection;
+        } else if (selectMode == DrawMode.SHOW) {
+            switchDirection = false;
+            FadeTransition animation = animation(toolbar, false);
+            animation.setOnFinished(it -> animation(subToolbar, true).play());
+            animation.play();
         } else if (selectMode == DrawMode.NONE) {
             switchDirection = true;
             FadeTransition animation = animation(toolbar, true);
@@ -591,5 +598,9 @@ public class FloatingToolbar {
         // 清空工具栏内容
         toolbar.getChildren().clear();
         subToolbar.getChildren().clear();
+    }
+
+    public boolean isSwitchDirection() {
+        return switchDirection;
     }
 }

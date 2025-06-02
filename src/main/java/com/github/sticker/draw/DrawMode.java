@@ -6,6 +6,7 @@ public enum DrawMode {
     RECTANGLE,
     SWITCH,
     LINE,
+    SHOW
     ;
 
     public static DrawMode switchMode(DrawMode currentMode, DrawMode handler) {

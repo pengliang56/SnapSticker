@@ -142,6 +142,7 @@ public class StickerPane extends StackPane {
 
     public void setToolbar(Pane root) {
         floatingToolbar = new FloatingToolbar(frame, root, drawCanvas, null, this, false);
+        frame.getProperties().put("showToolbar", false);
     }
 
     /**
