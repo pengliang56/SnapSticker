@@ -43,17 +43,17 @@ public class StickerEventHandler {
 
         // 创建缩放处理器
         StickerScaleHandler scaleHandler = new StickerScaleHandler(stickerPane.getFrame(), scaleLabel);
-        stickerPane.getProperties().put("scaleHandler", scaleHandler);
+        stickerPane.getFrame().getProperties().put("scaleHandler", scaleHandler);
 
         contextMenu = new StickerContextMenu(stage, stickerPane) {
             @Override
-            protected void applyZoom(ImageView sticker, double scale) {
-                StickerEventHandler.this.applyZoom(sticker, scale);
+            protected void applyZoom(Rectangle frame, double scale) {
+                StickerEventHandler.this.applyZoom(frame, scale);
             }
 
             @Override
-            protected void updateStickerSize(ImageView sticker) {
-                StickerEventHandler.this.updateStickerSize(sticker);
+            protected void updateStickerSize(Rectangle frame) {
+                StickerEventHandler.this.updateStickerSize(frame);
             }
         };
 
@@ -68,13 +68,14 @@ public class StickerEventHandler {
             }
 
             // 更新属性并显示菜单
-            contextMenu.show(stickerPane.getImageView(), event.getScreenX(), event.getScreenY());
+            contextMenu.show(frame, event.getScreenX(), event.getScreenY());
             stickerPane.toFront();
         });
     }
 
     private void setupEventHandlers() {
         // 设置鼠标事件处理
+        frame.setOnMouseClicked(this::handleClicked);
         frame.setOnMousePressed(this::handleMousePressed);
         frame.setOnMouseDragged(this::handleMouseDragged);
         frame.setOnMouseReleased(this::handleMouseReleased);
@@ -87,6 +88,12 @@ public class StickerEventHandler {
                 handleFocusLost();
             }
         });
+    }
+
+    private void handleClicked(MouseEvent event) {
+        if (contextMenu.isShowing()) {
+            contextMenu.hide();
+        }
     }
 
     private void handleMousePressed(MouseEvent event) {
@@ -144,18 +151,18 @@ public class StickerEventHandler {
         }
     }
 
-    private void applyZoom(ImageView sticker, double scale) {
-        StickerScaleHandler scaleHandler = (StickerScaleHandler) sticker.getProperties().get("scaleHandler");
+    private void applyZoom(Rectangle frame, double scale) {
+        StickerScaleHandler scaleHandler = (StickerScaleHandler) frame.getProperties().get("scaleHandler");
         if (scaleHandler != null) {
             scaleHandler.applyScale(scale);
             scaleHandler.setEnabled(true);  // 重新启用缩放功能
-            updateStickerSize(sticker);
+            updateStickerSize(frame);
         }
     }
 
-    private void updateStickerSize(ImageView sticker) {
+    private void updateStickerSize(Rectangle frame) {
         if (contextMenu != null) {
-            contextMenu.updateImageProperties(sticker);
+            contextMenu.updateImageProperties(frame);
         }
     }
 } 

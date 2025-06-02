@@ -1,6 +1,7 @@
 package com.github.sticker.feature.widget;
 
-import com.github.sticker.draw.DrawingToolbar;
+import com.github.sticker.util.ShotScreen;
+import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.effect.ColorAdjust;
@@ -9,12 +10,10 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
-import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
-import javafx.embed.swing.SwingFXUtils;
 
 import javax.imageio.ImageIO;
 import java.io.File;
@@ -28,7 +27,7 @@ import java.util.concurrent.CompletableFuture;
 public class StickerContextMenu extends ContextMenu {
     private final Stage stage;
     private final StickerPane stickerPane;
-    
+
     // Menu items that need to be accessed
     private final Menu sizeMenu;
     private final CheckMenuItem shownItem;
@@ -41,7 +40,7 @@ public class StickerContextMenu extends ContextMenu {
         this.stage = stage;
         this.stickerPane = stickerPane;
         getStyleClass().add("sticker-context-menu");
-        
+
         // Initialize menu items
         this.sizeMenu = new Menu();
         this.shownItem = new CheckMenuItem("Shadow");
@@ -49,21 +48,21 @@ public class StickerContextMenu extends ContextMenu {
         this.rotationItem = new MenuItem("Rotation: 0°");
         this.invertedItem = new MenuItem("Color inverted: No");
         this.currentZoomItem = new MenuItem("100%         Current");
-        
+
         initializeMenuItems();
-        
+
         // Add showing property listener to update properties when menu opens
         setOnShowing(event -> {
-            if (getOwnerNode() instanceof ImageView sticker) {
-                updateImageProperties(sticker);
+            if (getOwnerNode() instanceof Rectangle frame) {
+                updateImageProperties(frame);
             }
         });
     }
 
     @Override
     public void show(Node anchor, double screenX, double screenY) {
-        if (anchor instanceof ImageView sticker) {
-            updateImageProperties(sticker);
+        if (anchor instanceof Rectangle frame) {
+            updateImageProperties(frame);
         }
         super.show(anchor, screenX, screenY);
     }
@@ -74,10 +73,10 @@ public class StickerContextMenu extends ContextMenu {
         MenuItem saveItem = new MenuItem("Save image as...");
         MenuItem pasteItem = new MenuItem("Paste");
         MenuItem replaceItem = new MenuItem("Replace by file...");
-        
+
         // Create zoom menu
         Menu zoomMenu = createZoomMenu();
-        
+
         // Create image processing menu
         Menu imageProcessingMenu = createImageProcessingMenu();
 
@@ -88,17 +87,17 @@ public class StickerContextMenu extends ContextMenu {
         CheckMenuItem showToolbarItem = new CheckMenuItem("Show toolbar");
 
         // Set up event handlers
-        setupEventHandlers(copyItem, saveItem, pasteItem, replaceItem, 
-                         viewFolderItem, closeItem, destroyItem, showToolbarItem);
+        setupEventHandlers(copyItem, saveItem, pasteItem, replaceItem,
+                viewFolderItem, closeItem, destroyItem, showToolbarItem);
 
         // Add all items to the menu
         getItems().addAll(
-            copyItem, saveItem, new SeparatorMenuItem(),
-            zoomMenu, imageProcessingMenu, new SeparatorMenuItem(),
-            pasteItem, replaceItem, new SeparatorMenuItem(),
-            shownItem, showToolbarItem, new SeparatorMenuItem(),
-            viewFolderItem, closeItem, destroyItem, new SeparatorMenuItem(),
-            sizeMenu
+                copyItem, saveItem, new SeparatorMenuItem(),
+                zoomMenu, imageProcessingMenu, new SeparatorMenuItem(),
+                pasteItem, replaceItem, new SeparatorMenuItem(),
+                shownItem, showToolbarItem, new SeparatorMenuItem(),
+                viewFolderItem, closeItem, destroyItem, new SeparatorMenuItem(),
+                sizeMenu
         );
 
         // Initialize size menu items
@@ -107,7 +106,7 @@ public class StickerContextMenu extends ContextMenu {
 
     private void initializeSizeMenu() {
         MenuItem zoomItem = new MenuItem("Zoom: 100%");
-        
+
         // Set styles
         sizeMenu.setStyle("-fx-text-fill: #666666;");
         zoomItem.setStyle("-fx-text-fill: #666666;");
@@ -126,21 +125,21 @@ public class StickerContextMenu extends ContextMenu {
 
     private Menu createZoomMenu() {
         Menu zoomMenu = new Menu("Zoom");
-        
+
         MenuItem zoom33Item = new MenuItem("33.3%");
         MenuItem zoom50Item = new MenuItem("50%");
         MenuItem zoom100Item = new MenuItem("100%");
         MenuItem zoom200Item = new MenuItem("200%");
-        
+
         currentZoomItem.setDisable(true);
         CheckMenuItem smoothingItem = new CheckMenuItem("Smoothing");
         smoothingItem.setSelected(true);
         smoothingItem.setDisable(true);
 
         zoomMenu.getItems().addAll(
-            zoom33Item, zoom50Item, zoom100Item, zoom200Item,
-            new SeparatorMenuItem(),
-            currentZoomItem, smoothingItem
+                zoom33Item, zoom50Item, zoom100Item, zoom200Item,
+                new SeparatorMenuItem(),
+                currentZoomItem, smoothingItem
         );
 
         // Set up zoom event handlers
@@ -154,16 +153,16 @@ public class StickerContextMenu extends ContextMenu {
 
     private Menu createImageProcessingMenu() {
         Menu menu = new Menu("Image processing");
-        
+
         MenuItem rotateLeftItem = new MenuItem("Rotate left");
         MenuItem rotateRightItem = new MenuItem("Rotate right");
         MenuItem flipHorizontalItem = new MenuItem("Horizontal flip");
         MenuItem flipVerticalItem = new MenuItem("Vertical flip");
 
         menu.getItems().addAll(
-            rotateLeftItem, rotateRightItem,
-            new SeparatorMenuItem(),
-            flipHorizontalItem, flipVerticalItem
+                rotateLeftItem, rotateRightItem,
+                new SeparatorMenuItem(),
+                flipHorizontalItem, flipVerticalItem
         );
 
         // Set up event handlers
@@ -175,10 +174,10 @@ public class StickerContextMenu extends ContextMenu {
         return menu;
     }
 
-    private void setupEventHandlers(MenuItem copyItem, MenuItem saveItem, 
-            MenuItem pasteItem, MenuItem replaceItem, MenuItem viewFolderItem, 
-            MenuItem closeItem, MenuItem destroyItem, CheckMenuItem showToolbarItem) {
-        
+    private void setupEventHandlers(MenuItem copyItem, MenuItem saveItem,
+                                    MenuItem pasteItem, MenuItem replaceItem, MenuItem viewFolderItem,
+                                    MenuItem closeItem, MenuItem destroyItem, CheckMenuItem showToolbarItem) {
+
         copyItem.setOnAction(this::handleCopy);
         saveItem.setOnAction(this::handleSave);
         pasteItem.setOnAction(this::handlePaste);
@@ -192,8 +191,8 @@ public class StickerContextMenu extends ContextMenu {
 
     private void handleZoom(javafx.event.ActionEvent e, double scale) {
         if (e.getTarget() instanceof MenuItem menuItem) {
-            if (menuItem.getParentMenu().getParentPopup().getOwnerNode() instanceof ImageView sticker) {
-                applyZoom(sticker, scale);
+            if (menuItem.getParentMenu().getParentPopup().getOwnerNode() instanceof Rectangle frame) {
+                applyZoom(frame, scale);
                 hide();
             }
         }
@@ -201,66 +200,50 @@ public class StickerContextMenu extends ContextMenu {
 
     private void handleRotation(javafx.event.ActionEvent e, double angle) {
         if (e.getTarget() instanceof MenuItem menuItem) {
-            if (menuItem.getParentMenu().getParentPopup().getOwnerNode() instanceof ImageView sticker) {
-                Rectangle frame = (Rectangle) sticker.getParent().getChildrenUnmodifiable().stream()
-                        .filter(node -> node instanceof Rectangle)
-                        .findFirst()
-                        .orElse(null);
-                if (frame != null) {
-                    frame.setRotate((frame.getRotate() + angle) % 360);
-                    updateStickerSize(sticker);
-                    hide();
-                }
+            if (menuItem.getParentMenu().getParentPopup().getOwnerNode() instanceof Rectangle frame) {
+                frame.setRotate((frame.getRotate() + angle) % 360);
+                updateStickerSize(frame);
+                hide();
             }
         }
     }
 
     private void handleFlip(javafx.event.ActionEvent e, boolean horizontal) {
         if (e.getTarget() instanceof MenuItem menuItem) {
-            if (menuItem.getParentMenu().getParentPopup().getOwnerNode() instanceof ImageView sticker) {
-                Rectangle frame = (Rectangle) sticker.getParent().getChildrenUnmodifiable().stream()
-                        .filter(node -> node instanceof Rectangle)
-                        .findFirst()
-                        .orElse(null);
-                if (frame != null) {
-                    if (horizontal) {
-                        frame.setScaleX(frame.getScaleX() * -1);
-                    } else {
-                        frame.setScaleY(frame.getScaleY() * -1);
-                    }
-                    hide();
+            if (menuItem.getParentMenu().getParentPopup().getOwnerNode() instanceof Rectangle frame) {
+                if (horizontal) {
+                    frame.setScaleX(frame.getScaleX() * -1);
+                } else {
+                    frame.setScaleY(frame.getScaleY() * -1);
                 }
+                hide();
             }
         }
     }
 
     private void handleCopy(javafx.event.ActionEvent e) {
         if (e.getTarget() instanceof MenuItem menuItem) {
-            if (menuItem.getParentPopup().getOwnerNode() instanceof ImageView sticker) {
-                Clipboard clipboard = Clipboard.getSystemClipboard();
-                ClipboardContent content = new ClipboardContent();
-                content.putImage(sticker.getImage());
-                clipboard.setContent(content);
-                hide();
-            }
+            Clipboard clipboard = Clipboard.getSystemClipboard();
+            ClipboardContent content = new ClipboardContent();
+            content.putImage(stickerPane.getImageView().getImage());
+            clipboard.setContent(content);
+            hide();
         }
     }
 
     private void handleSave(javafx.event.ActionEvent e) {
         if (e.getTarget() instanceof MenuItem menuItem) {
-            if (menuItem.getParentPopup().getOwnerNode() instanceof ImageView sticker) {
-                saveImage(sticker.getImage());
-                hide();
-            }
+            saveImage(stickerPane.getImageView().getImage());
+            hide();
         }
     }
 
     private void handlePaste(javafx.event.ActionEvent e) {
         if (e.getTarget() instanceof MenuItem menuItem) {
-            if (menuItem.getParentPopup().getOwnerNode() instanceof ImageView sticker) {
+            if (menuItem.getParentPopup().getOwnerNode() instanceof Rectangle frame) {
                 Clipboard clipboard = Clipboard.getSystemClipboard();
                 if (clipboard.hasImage()) {
-                    updateStickerImage(sticker, clipboard.getImage());
+                    updateStickerImage(frame, clipboard.getImage());
                     hide();
                 }
             }
@@ -269,13 +252,13 @@ public class StickerContextMenu extends ContextMenu {
 
     private void handleReplace(javafx.event.ActionEvent e) {
         if (e.getTarget() instanceof MenuItem menuItem) {
-            if (menuItem.getParentPopup().getOwnerNode() instanceof ImageView sticker) {
+            if (menuItem.getParentPopup().getOwnerNode() instanceof Rectangle frame) {
                 FileChooser fileChooser = createImageFileChooser();
                 File file = fileChooser.showOpenDialog(stage);
                 if (file != null) {
                     try {
                         Image newImage = new Image(file.toURI().toString());
-                        updateStickerImage(sticker, newImage);
+                        updateStickerImage(frame, newImage);
                         hide();
                     } catch (Exception ex) {
                         System.err.println("Error loading image: " + ex.getMessage());
@@ -298,17 +281,17 @@ public class StickerContextMenu extends ContextMenu {
     private void handleClose(javafx.event.ActionEvent e) {
         if (e.getTarget() instanceof MenuItem menuItem) {
             if (menuItem.getParentPopup().getOwnerNode() instanceof ImageView sticker) {
-                removeSticker(sticker);
+                removeSticker();
                 hide();
-                saveToHistory(sticker.getImage());
+                saveToHistory();
             }
         }
     }
 
     private void handleDestroy(javafx.event.ActionEvent e) {
         if (e.getTarget() instanceof MenuItem menuItem) {
-            if (menuItem.getParentPopup().getOwnerNode() instanceof ImageView sticker) {
-                removeSticker(sticker);
+            if (menuItem.getParentPopup().getOwnerNode() instanceof Rectangle frame) {
+                removeSticker();
                 hide();
             }
         }
@@ -332,60 +315,56 @@ public class StickerContextMenu extends ContextMenu {
 
     private void handleShadowToggle(javafx.event.ActionEvent e) {
         if (e.getTarget() instanceof CheckMenuItem menuItem) {
-            System.out.println("menuItem = " + menuItem.getParentPopup().getOwnerNode());
-            if (menuItem.getParentPopup().getOwnerNode() instanceof ImageView sticker) {
+            if (menuItem.getParentPopup().getOwnerNode() instanceof Rectangle frame) {
                 boolean isShown = menuItem.isSelected();
-                System.out.println("isShown = " + menuItem.isSelected());
                 stickerPane.getFrame().getProperties().put("shadow", isShown);
-                updateShadowEffect(sticker, isShown);
+                updateShadowEffect(frame, isShown);
             }
         }
     }
 
     // Helper methods
-    private void updateShadowEffect(ImageView sticker, boolean isShown) {
-        DropShadow effect = (DropShadow) sticker.getEffect();
+    private void updateShadowEffect(Rectangle frame, boolean isShown) {
+        DropShadow effect = (DropShadow) frame.getEffect();
         if (effect != null) {
             if (isShown) {
-                effect.setColor(sticker.isFocused() ? 
-                    Color.rgb(102, 178, 255, 0.8) : 
-                    Color.rgb(255, 255, 255, 0.3));
+                effect.setColor(frame.isFocused() ?
+                        Color.rgb(102, 178, 255, 0.8) :
+                        Color.rgb(255, 255, 255, 0.3));
             } else {
                 effect.setColor(Color.TRANSPARENT);
             }
         }
     }
 
-    private void updateStickerImage(ImageView sticker, Image newImage) {
-        double currentX = sticker.getLayoutX();
-        double currentY = sticker.getLayoutY();
-        sticker.setImage(newImage);
-        sticker.setFitWidth(0);
-        sticker.setFitHeight(0);
-        sticker.setPreserveRatio(true);
-        sticker.setLayoutX(currentX);
-        sticker.setLayoutY(currentY);
+    private void updateStickerImage(Rectangle frame, Image newImage) {
+        double currentX = frame.getLayoutX();
+        double currentY = frame.getLayoutY();
+//        sticker.setImage(newImage);
+//        sticker.setFitWidth(0);
+//        sticker.setFitHeight(0);
+//        sticker.setPreserveRatio(true);
+//        sticker.setLayoutX(currentX);
+//        sticker.setLayoutY(currentY);
     }
 
-    private void removeSticker(ImageView sticker) {
-        // 获取包含 ImageView 的 StickerPane
-        if (sticker.getParent() instanceof StickerPane stickerPane) {
-            stickerPane.destroy();  // 调用destroy方法清理资源并移除
-        }
+    private void removeSticker() {
+        stickerPane.destroy();
+
     }
 
     private FileChooser createImageFileChooser() {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Replace Image");
         fileChooser.getExtensionFilters().addAll(
-            new FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg", "*.jpeg", "*.gif", "*.bmp")
+                new FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg", "*.jpeg", "*.gif", "*.bmp")
         );
-        
+
         File picturesDir = new File(System.getProperty("user.home"), "Pictures");
         if (picturesDir.exists()) {
             fileChooser.setInitialDirectory(picturesDir);
         }
-        
+
         return fileChooser;
     }
 
@@ -433,14 +412,14 @@ public class StickerContextMenu extends ContextMenu {
         }
     }
 
-    private void saveToHistory(Image image) {
+    private void saveToHistory() {
         CompletableFuture.runAsync(() -> {
             try {
                 File historyDir = getHistoryDirectory();
                 String timestamp = String.format("%1$tY%1$tm%1$td_%1$tH%1$tM%1$tS",
                         System.currentTimeMillis());
                 File outputFile = new File(historyDir, "SnapSticker_" + timestamp + ".png");
-                ImageIO.write(SwingFXUtils.fromFXImage(image, null), "png", outputFile);
+                ImageIO.write(SwingFXUtils.fromFXImage(ShotScreen.snapshotScreen(stickerPane.getScene(), stickerPane.getFrame()), null), "png", outputFile);
                 System.out.println("Image saved to history: " + outputFile.getAbsolutePath());
             } catch (IOException ignored) {
 
@@ -449,50 +428,42 @@ public class StickerContextMenu extends ContextMenu {
     }
 
     // Methods that need to be implemented in StickerStage
-    protected void applyZoom(ImageView sticker, double scale) {
+    protected void applyZoom(Rectangle frame, double scale) {
         // This will be implemented in StickerStage
     }
 
-    protected void updateStickerSize(ImageView sticker) {
+    protected void updateStickerSize(Rectangle frame) {
         // This will be implemented in StickerStage
     }
 
-    public void updateImageProperties(ImageView sticker) {
+    public void updateImageProperties(Rectangle frame) {
         // Get the actual dimensions of the sticker
-        StickerScaleHandler scaleHandler = (StickerScaleHandler) sticker.getProperties().get("scaleHandler");
+        StickerScaleHandler scaleHandler = (StickerScaleHandler) frame.getProperties().get("scaleHandler");
         if (scaleHandler != null) {
             double width = scaleHandler.getOriginalWidth() * scaleHandler.getCurrentScale();
             double height = scaleHandler.getOriginalHeight() * scaleHandler.getCurrentScale();
-            
+
             // Update size menu text with actual dimensions
             sizeMenu.setText(String.format("%d × %d", Math.round(width), Math.round(height)));
-            
+
             // Update scale percentage
             double scale = scaleHandler.getCurrentScale();
             currentZoomItem.setText(String.format("%.0f%%         Current", scale * 100));
             sizeMenu.getItems().get(0).setText(String.format("Zoom: %.0f%%", scale * 100));
         }
-        
-        // Get the frame
-        Rectangle frame = (Rectangle) sticker.getParent().getChildrenUnmodifiable().stream()
-                .filter(node -> node instanceof Rectangle)
-                .findFirst()
-                .orElse(null);
-        
-        if (frame != null) {
-            // Update other properties
-            double opacity = frame.getOpacity();
-            opacityItem.setText(String.format("Opacity: %d%%", (int)(opacity * 100)));
 
-            double rotation = frame.getRotate();
-            rotationItem.setText(String.format("Rotation: %.1f°", rotation));
+        // Update other properties
+        double opacity = frame.getOpacity();
+        opacityItem.setText(String.format("Opacity: %d%%", (int) (opacity * 100)));
 
-            boolean isInverted = frame.getEffect() instanceof ColorAdjust;
-            invertedItem.setText("Color inverted: " + (isInverted ? "Yes" : "No"));
-            
-            // Update shadow state
-            shownItem.setSelected(Boolean.TRUE.equals(frame.getProperties().get("shadow")));
-        }
+        double rotation = frame.getRotate();
+        rotationItem.setText(String.format("Rotation: %.1f°", rotation));
+
+        boolean isInverted = frame.getEffect() instanceof ColorAdjust;
+        invertedItem.setText("Color inverted: " + (isInverted ? "Yes" : "No"));
+
+        // Update shadow state
+        shownItem.setSelected(Boolean.TRUE.equals(frame.getProperties().get("shadow")));
     }
 
     private double calculateScale(ImageView sticker) {

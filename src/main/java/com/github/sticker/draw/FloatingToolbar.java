@@ -3,6 +3,7 @@ package com.github.sticker.draw;
 import com.github.sticker.feature.StickerStage;
 import com.github.sticker.feature.widget.StickerPane;
 import com.github.sticker.screenshot.ScreenshotSelector;
+import com.github.sticker.util.ShotScreen;
 import javafx.animation.FadeTransition;
 import javafx.beans.binding.Bindings;
 import javafx.embed.swing.SwingFXUtils;
@@ -438,34 +439,7 @@ public class FloatingToolbar {
     }
 
     private WritableImage snapshotScreen() {
-        //Rectangle selectionArea = screenshotSelector.getSelectionArea();
-        Scene scene = drawCanvas.getScene();
-
-        double x = selectionArea.getX();
-        double y = selectionArea.getY();
-        double width = selectionArea.getWidth();
-        double height = selectionArea.getHeight();
-
-        Robot robot;
-        try {
-            robot = new Robot();
-        } catch (AWTException e) {
-            throw new RuntimeException("Failed to create Robot instance", e);
-        }
-
-        Point2D sceneCoords = scene.getRoot().localToScreen(x, y);
-
-        java.awt.Rectangle awtRect = new java.awt.Rectangle(
-                (int) sceneCoords.getX(),
-                (int) sceneCoords.getY(),
-                (int) width,
-                (int) height
-        );
-
-        BufferedImage screenImage = robot.createScreenCapture(awtRect);
-        WritableImage screenContent = new WritableImage((int) width, (int) height);
-        SwingFXUtils.toFXImage(screenImage, screenContent);
-        return screenContent;
+        return ShotScreen.snapshotScreen(drawCanvas.getScene(), selectionArea);
     }
 
     private Separator createStyledSeparator() {
