@@ -40,12 +40,6 @@ public class StickerEventHandler {
     private void setupBasicProperties(StickerPane stickerPane) {
         // 设置初始焦点属性
         frame.setFocusTraversable(true);
-        
-        StickerScaleLabel scaleLabel = new StickerScaleLabel(stickerPane);
-        root.getChildren().add(scaleLabel);
-        StickerScaleHandler scaleHandler = new StickerScaleHandler(stickerPane, scaleLabel);
-        stickerPane.getFrame().getProperties().put("scaleHandler", scaleHandler);
-
         contextMenu = new StickerContextMenu(stage, stickerPane) {
             @Override
             protected void applyZoom(Rectangle frame, double scale) {

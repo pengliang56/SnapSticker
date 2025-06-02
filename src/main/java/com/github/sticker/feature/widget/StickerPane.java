@@ -52,8 +52,12 @@ public class StickerPane extends StackPane {
         drawCanvas.prefWidthProperty().bind(frame.widthProperty());
         drawCanvas.prefHeightProperty().bind(frame.heightProperty());
 
+        StickerScaleLabel scaleLabel = new StickerScaleLabel(this);
+        StickerScaleHandler scaleHandler = new StickerScaleHandler(this, scaleLabel);
+        this.getFrame().getProperties().put("scaleHandler", scaleHandler);
+
         // 添加组件到面板
-        getChildren().addAll(frame, imageView, drawCanvas);
+        getChildren().addAll(frame, imageView, drawCanvas, scaleLabel);
 
         // 设置面板样式
         setStyle("-fx-background-color: transparent;");

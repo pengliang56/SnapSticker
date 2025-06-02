@@ -221,7 +221,6 @@ public class FloatingToolbar {
     }
 
     public void drawMode(Button handleButton, DrawMode selectMode) {
-        System.out.println("drawMode " + selectMode);
         drawMode = false;
         switch (selectMode) {
             case PEN, RECTANGLE, LINE -> {
@@ -457,7 +456,6 @@ public class FloatingToolbar {
 
     private void aiToolbar(DrawMode selectMode, boolean drawMode) {
         if (selectMode == DrawMode.SWITCH) {
-            System.out.println("switchDirection: " + switchDirection);
             if (subToolbar.isVisible()) {
                 FadeTransition subFade = animation(subToolbar, true);
                 subFade.setOnFinished(it -> animation(toolbar, switchDirection).play());

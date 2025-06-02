@@ -1,17 +1,11 @@
 package com.github.sticker.feature;
 
-import com.github.sticker.draw.DrawingToolbar;
-import com.github.sticker.feature.widget.*;
-import com.github.sticker.util.ScreenManager;
+import com.github.sticker.feature.widget.StickerPane;
 import com.github.sticker.util.StealthWindow;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.CacheHint;
-import javafx.scene.Cursor;
 import javafx.scene.Scene;
-import javafx.scene.image.ImageView;
-import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
-import javafx.scene.paint.Color;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;

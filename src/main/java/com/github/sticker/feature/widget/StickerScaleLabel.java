@@ -1,16 +1,21 @@
 package com.github.sticker.feature.widget;
 
 import javafx.animation.FadeTransition;
+import javafx.beans.binding.Bindings;
+import javafx.geometry.Point2D;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
 import javafx.scene.control.Label;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.util.Duration;
+import static javafx.scene.layout.Region.USE_COMPUTED_SIZE;
+import static javafx.scene.layout.Region.USE_PREF_SIZE;
 
 /**
  * A label component that shows the scale percentage of a sticker.
@@ -31,13 +36,16 @@ public class StickerScaleLabel extends Label {
         fadeOut.setFromValue(1.0);
         fadeOut.setToValue(0.0);
         fadeOut.setOnFinished(e -> setVisible(false));
-        
-        // Setup initial state
+        setSnapToPixel(true);
+        // 设置初始状态
         setVisible(false);
         setOpacity(0);
-        setMouseTransparent(true);
         
-        // Bind position to owner
+        // 确保标签不参与布局管理
+        setManaged(false);
+        resize(80, 24);
+        
+        // 设置位置绑定
         setupPositionBinding();
         
         // Store reference to owner
@@ -45,59 +53,59 @@ public class StickerScaleLabel extends Label {
     }
 
     private void setupStyle() {
-        setStyle("-fx-background-color: rgba(0, 0, 0, 0.7);" +
-                "-fx-padding: 3 0;" +  // 减小垂直内边距
-                "-fx-border-color: white;" +
-                "-fx-border-width: 1;" +
+        // 设置样式
+        setStyle("-fx-background-color: rgb(249,249,249);" +
+                "-fx-padding: 2 4;" +
                 "-fx-font-size: 15px;" +
-                "-fx-font-family: 'Segoe UI';");
+                "-fx-text-fill: black;" +
+                "-fx-font-family: 'Segoe UI';" +
+                "-fx-background-radius: 3px;" +
+                "-fx-alignment: center;");  // 添加文本居中对齐
         
-        // 创建左右两个Label和分隔线
-        Label sizeLabel = new Label("Size");
-        sizeLabel.setStyle("-fx-text-fill: white;");
-        Label valueLabel = new Label();
-        valueLabel.setStyle("-fx-text-fill: white;");
-        Region separator = new Region();
-        separator.setStyle("-fx-background-color: white; -fx-pref-width: 1;");
-        separator.setPrefHeight(16);  // 减小分隔线高度
-
-        // 创建水平布局
-        HBox layout = new HBox();
-        layout.setAlignment(Pos.CENTER);
-        layout.setSpacing(0);
-        layout.getChildren().addAll(
-            new Region() {{ setPrefWidth(8); }},  // 减小左边距
-            sizeLabel,
-            new Region() {{ setPrefWidth(8); }},  // 减小分隔线前的空间
-            separator,
-            new Region() {{ setPrefWidth(8); }},  // 减小分隔线后的空间
-            valueLabel,
-            new Region() {{ setPrefWidth(8); }}   // 减小右边距
-        );
-
-        // 存储valueLabel的引用以便更新
-        getProperties().put("valueLabel", valueLabel);
-
-        // 设置内容
-        setGraphic(layout);
         setFont(Font.font("Segoe UI", FontWeight.NORMAL, 15));
         setCursor(Cursor.DEFAULT);
     }
 
     private void setupPositionBinding() {
         if (owner != null) {
-            // 绑定到StickerPane的位置
-            StickerPane stickerPane = (StickerPane) owner.getParent();
-            layoutXProperty().bind(stickerPane.layoutXProperty());
-            layoutYProperty().bind(stickerPane.layoutYProperty().subtract(35));  // 增加与贴图的距离
+            layoutXProperty().bind(Bindings.createDoubleBinding(
+                    () -> {
+                        Point2D coords = owner.localToScene(0, 0);
+                        return coords.getX() + 3;  // 加上偏移量
+                    },
+                    owner.boundsInLocalProperty(),  // 监听节点变化
+                    owner.localToSceneTransformProperty()  // 监听变换变化
+            ));
+
+            layoutYProperty().bind(Bindings.createDoubleBinding(
+                    () -> {
+                        Point2D coords = owner.localToScene(0, 0);
+                        return coords.getY() + 3;  // 加上偏移量
+                    },
+                    owner.boundsInLocalProperty(),  // 监听节点变化
+                    owner.localToSceneTransformProperty()  // 监听变换变化
+            ));
+            
+            // 设置样式和行为
+            setMouseTransparent(true);
+            toFront();
         }
     }
+    
+    private void updatePosition() {
+        // 获取owner在场景中的位置
+        double ownerX = owner.getLayoutX();
+        double ownerY = owner.getLayoutY();
 
-    private void updateValue(double scale) {
-        Label valueLabel = (Label) getProperties().get("valueLabel");
-        if (valueLabel != null) {
-            valueLabel.setText(String.format("%.0f%%", scale * 100));
-        }
+        System.out.println("ownerX: " + ownerX + " ownerY: " + ownerY);
+        // 设置标签位置
+        setLayoutX(ownerX + 5);
+        setLayoutY(ownerY + 5);
+        
+        System.out.println("Label position updated - X: " + getLayoutX() + ", Y: " + getLayoutY());
+        System.out.println("Label computed size - Width: " + computePrefWidth(-1) + ", Height: " + computePrefHeight(-1));
+        System.out.println("Label actual size - Width: " + getWidth() + ", Height: " + getHeight());
+        System.out.println("Label text: " + getText());
     }
 
     /**
@@ -109,7 +117,7 @@ public class StickerScaleLabel extends Label {
         fadeOut.stop();
         
         // Update text and show label
-        updateValue(scale);
+        setText(String.format("Size: %.0f%%", scale * 100));
         setVisible(true);
         setOpacity(1.0);
         
@@ -120,7 +128,7 @@ public class StickerScaleLabel extends Label {
     private void startFadeOutTimer() {
         // 5秒后开始淡出
         javafx.animation.Timeline hideTimer = new javafx.animation.Timeline(
-            new javafx.animation.KeyFrame(Duration.seconds(5), e -> fadeOut.play())
+            new javafx.animation.KeyFrame(Duration.seconds(3), e -> fadeOut.play())
         );
         hideTimer.play();
     }
