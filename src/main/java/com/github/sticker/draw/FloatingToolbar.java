@@ -208,16 +208,6 @@ public class FloatingToolbar {
         return btn;
     }
 
-    private void baseStyle() {
-        toolbar.setStyle(
-                "-fx-background-color: rgba(50, 50, 50, 0.95);" +
-                        "-fx-background-radius: 8;" +
-                        "-fx-padding: 6;" +
-                        "-fx-spacing: 8;" +
-                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 10, 0.5, 0, 2);"
-        );
-    }
-
     public HBox getToolbar() {
         return toolbar;
     }
