@@ -50,6 +50,7 @@ public class FloatingToolbar {
     private Button penButton;
     private Button rectButton;
     private Button lineButton;
+    private Button closeButton;
     private final DrawCanvas drawCanvas;
 
     // ----------------------------------------------------
@@ -75,11 +76,19 @@ public class FloatingToolbar {
         createRedoButton();
         toolbar.getChildren().add(group2Separator);
 
-        // createCloseButton();
-        createStickerButton();
+        if (stickerPane == null) {
+            createStickerButton();
+        }
         createCopyButton();
         createSaveButton();
+        createCloseButton();
         toolbar.setAlignment(Pos.CENTER_LEFT);
+    }
+
+    private void createCloseButton() {
+        closeButton = createIconButton(Icon.clode, "Close (C)");
+        closeButton.setOnAction(e -> cancleSelection());
+        toolbar.getChildren().add(closeButton);
     }
 
     private void createLineButton() {
@@ -392,7 +401,7 @@ public class FloatingToolbar {
                 Bindings.createDoubleBinding(() -> {
                             // 计算理想居中位置
                             double idealX = selectionArea.getX() +
-                                    (selectionArea.getWidth() - toolbar.getWidth()) / 2;
+                                    (selectionArea.getWidth() - toolbar.getWidth());
 
                             // 边界约束
                             double minX = 5;
