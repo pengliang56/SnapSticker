@@ -44,6 +44,13 @@ public class StickerScaleHandler {
                 this.originalHeight = stickerPane.getImageView().getImage().getHeight();
             }
         });
+
+        stickerPane.getImageView().imageProperty().addListener((observable, oldImage, newImage) -> {
+            if (newImage != null) {
+                this.originalWidth = newImage.getWidth();
+                this.originalHeight = newImage.getHeight();
+            }
+        });
     }
 
     private void setupScrollHandler() {

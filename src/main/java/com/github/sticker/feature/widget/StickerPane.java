@@ -73,9 +73,6 @@ public class StickerPane extends StackPane {
         // 设置面板样式
         setStyle("-fx-background-color: transparent;");
 
-        // 配置初始大小
-        configStackPane();
-
         // 绑定frame位置到StackPane的位置
         frame.xProperty().bind(layoutXProperty());
         frame.yProperty().bind(layoutYProperty());
@@ -86,25 +83,6 @@ public class StickerPane extends StackPane {
         // 设置基本属性
         setPickOnBounds(true);
         setMouseTransparent(false);
-    }
-
-    private void configStackPane() {
-        imageView.imageProperty().addListener((obs, oldImg, newImg) -> {
-            if (newImg != null) {
-                double width = Math.min(newImg.getWidth(), MAX_WIDTH);
-                double height = Math.min(newImg.getHeight(), MAX_HEIGHT);
-
-                if (newImg.getWidth() > MAX_WIDTH) {
-                    height = MAX_WIDTH * newImg.getHeight() / newImg.getWidth();
-                } else if (newImg.getHeight() > MAX_HEIGHT) {
-                    width = MAX_HEIGHT * newImg.getWidth() / newImg.getHeight();
-                }
-
-                frame.setWidth(width);
-                frame.setHeight(height);
-                setPrefSize(width, height);
-            }
-        });
     }
 
     /**

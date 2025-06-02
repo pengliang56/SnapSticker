@@ -546,7 +546,7 @@ public class FloatingToolbar {
         Pane root = screenshotSelector.getRoot();
         root.lookupAll("Circle").forEach(circle ->
                 circle.setStyle("-fx-opacity: 0;"));
-        root.lookupAll("Rectangle").forEach(rec ->
+        root.lookupAll("#special-rect-1").forEach(rec ->
                 rec.setStyle("-fx-opacity: 0;"));
 
         new Thread(new Task<>() {

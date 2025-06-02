@@ -323,6 +323,7 @@ public class ScreenshotSelector {
      */
     private Rectangle createSelectionMask() {
         Rectangle mask = new Rectangle();
+        mask.setId("special-rect-1");
         mask.setCache(true);
         mask.setCacheHint(CacheHint.SPEED);
         mask.setFill(Color.rgb(0, 0, 0, 0.01));
