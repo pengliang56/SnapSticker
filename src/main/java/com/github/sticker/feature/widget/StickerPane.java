@@ -49,6 +49,20 @@ public class StickerPane extends StackPane {
         drawCanvas.prefWidthProperty().bind(frame.widthProperty());
         drawCanvas.prefHeightProperty().bind(frame.heightProperty());
 
+        // 绑定旋转属性
+        imageView.rotateProperty().bind(frame.rotateProperty());
+        drawCanvas.rotateProperty().bind(frame.rotateProperty());
+        
+        // 设置旋转中心点
+        frame.setRotationAxis(javafx.scene.transform.Rotate.Z_AXIS);
+        imageView.setRotationAxis(javafx.scene.transform.Rotate.Z_AXIS);
+        drawCanvas.setRotationAxis(javafx.scene.transform.Rotate.Z_AXIS);
+
+        // 监听旋转变化，调整缩放基准点
+        frame.rotateProperty().addListener((obs, oldVal, newVal) -> {
+            //updateScaleOrigin();
+        });
+
         StickerScaleLabel scaleLabel = new StickerScaleLabel(this);
         StickerScaleHandler scaleHandler = new StickerScaleHandler(this, scaleLabel);
         this.getFrame().getProperties().put("scaleHandler", scaleHandler);
