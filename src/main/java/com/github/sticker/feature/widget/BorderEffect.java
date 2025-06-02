@@ -66,7 +66,7 @@ public class BorderEffect {
                         new KeyValue(effect.colorProperty(), ACTIVE_COLOR)),
                 new KeyFrame(Duration.seconds(1),
                         new KeyValue(effect.radiusProperty(), 15),
-                        new KeyValue(effect.colorProperty(), Color.rgb(255, 102, 102, 0.8))),
+                        new KeyValue(effect.colorProperty(), Color.rgb(255, 12, 12, 0.8))),
                 new KeyFrame(Duration.seconds(2),
                         new KeyValue(effect.radiusProperty(), 10),
                         new KeyValue(effect.colorProperty(), ACTIVE_COLOR))
