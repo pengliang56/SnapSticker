@@ -177,8 +177,10 @@ public class FloatingToolbar {
         Scene scene = parentContainer.getScene();
         scene.addEventFilter(KeyEvent.KEY_PRESSED, e -> {
             if (e.getCode() == KeyCode.SPACE) {
-                drawMode(null, DrawMode.SWITCH);
-                e.consume();
+                if (selectionArea.isFocused()) {
+                    drawMode(null, DrawMode.SWITCH);
+                    e.consume();
+                }
             }
         });
     }
@@ -600,5 +602,9 @@ public class FloatingToolbar {
 
     public boolean isSwitchDirection() {
         return switchDirection;
+    }
+
+    public void setSwitchDirection(boolean switchDirection) {
+        this.switchDirection = switchDirection;
     }
 }

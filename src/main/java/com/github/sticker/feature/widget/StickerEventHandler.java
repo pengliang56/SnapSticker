@@ -152,6 +152,8 @@ public class StickerEventHandler {
         borderEffect.setActive(false);
         if (stickerPane.getFloatingToolbar() != null) {
             stickerPane.getFloatingToolbar().drawMode(null, DrawMode.NONE);
+            stickerPane.getFrame().getProperties().put("showToolbar", false);
+            stickerPane.getFloatingToolbar().setSwitchDirection(false);
         }
     }
 
