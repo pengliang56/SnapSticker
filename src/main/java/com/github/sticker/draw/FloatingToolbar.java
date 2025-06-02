@@ -80,9 +80,13 @@ public class FloatingToolbar {
         if (stickerPane == null) {
             createStickerButton();
         }
+
         createCopyButton();
         createSaveButton();
-        createCloseButton();
+
+        if (stickerPane == null) {
+            createCloseButton();
+        }
         toolbar.setAlignment(Pos.CENTER_LEFT);
     }
 
