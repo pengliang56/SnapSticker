@@ -21,14 +21,12 @@ public class StickerEventHandler {
     private StickerContextMenu contextMenu;
 
     private final Stage stage = StickerStage.getInstance().getStage();
-    private final Pane root;
 
     // 用于记录拖拽的偏移量
     private double dragStartX;
     private double dragStartY;
 
-    public StickerEventHandler(Pane root, Rectangle frame, StickerPane stickerPane, BorderEffect borderEffect) {
-        this.root = root;
+    public StickerEventHandler(Rectangle frame, StickerPane stickerPane, BorderEffect borderEffect) {
         this.frame = frame;
         this.stickerPane = stickerPane;
         this.stickerStage = StickerStage.getInstance();

@@ -331,14 +331,15 @@ public class StickerContextMenu extends ContextMenu {
     }
 
     private void updateStickerImage(Rectangle frame, Image newImage) {
+        ImageView sticker = stickerPane.getImageView();
         double currentX = frame.getLayoutX();
         double currentY = frame.getLayoutY();
-//        sticker.setImage(newImage);
-//        sticker.setFitWidth(0);
-//        sticker.setFitHeight(0);
-//        sticker.setPreserveRatio(true);
-//        sticker.setLayoutX(currentX);
-//        sticker.setLayoutY(currentY);
+        sticker.setImage(newImage);
+        sticker.setFitWidth(0);
+        sticker.setFitHeight(0);
+        sticker.setPreserveRatio(true);
+        sticker.setLayoutX(currentX);
+        sticker.setLayoutY(currentY);
     }
 
     private void removeSticker() {

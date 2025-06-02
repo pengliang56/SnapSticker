@@ -178,6 +178,9 @@ public class FloatingToolbar {
         scene.addEventFilter(KeyEvent.KEY_PRESSED, e -> {
             if (e.getCode() == KeyCode.SPACE) {
                 if (selectionArea.isFocused()) {
+                    if (stickerStage != null) {
+                        stickerPane.getFrame().getProperties().put("showToolbar", !isSwitchDirection());
+                    }
                     drawMode(null, DrawMode.SWITCH);
                     e.consume();
                 }
@@ -532,7 +535,7 @@ public class FloatingToolbar {
     private void createSticker() {
         // 创建贴图面板
         WritableImage screenImage = snapshotScreen();
-        stickerPane = new StickerPane(screenImage, stickerStage.getRoot());
+        stickerPane = new StickerPane(screenImage);
         // 设置贴图初始大小为选区大小
         stickerPane.setSize(selectionArea.getWidth(), selectionArea.getHeight());
 

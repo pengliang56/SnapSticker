@@ -17,15 +17,12 @@ public class StickerPane extends StackPane {
     private final ImageView imageView;
     private final DrawCanvas drawCanvas;
     private FloatingToolbar floatingToolbar;
-    private Pane root;
     private final Rectangle frame;
 
     double MAX_WIDTH = 8000;
     double MAX_HEIGHT = 6000;
 
-    public StickerPane(WritableImage image, Pane root) {
-        this.root = root;
-
+    public StickerPane(WritableImage image) {
         frame = new Rectangle();
         frame.setFocusTraversable(true);
         frame.setFill(Color.TRANSPARENT);
@@ -34,9 +31,9 @@ public class StickerPane extends StackPane {
         imageView = new ImageView(image);
         imageView.setPreserveRatio(true);
         imageView.setSmooth(true);
-        imageView.setMouseTransparent(true);  // 图片不接收鼠标事件
-        imageView.setPickOnBounds(false);     // 禁用边界拾取
-        imageView.setFocusTraversable(false); // 禁用焦点遍历
+        imageView.setMouseTransparent(true);
+        imageView.setPickOnBounds(false);
+        imageView.setFocusTraversable(false);
 
         BorderEffect borderEffect = new BorderEffect(frame);
         frame.getProperties().put("borderEffect", borderEffect);
@@ -70,7 +67,7 @@ public class StickerPane extends StackPane {
         frame.yProperty().bind(layoutYProperty());
 
         // 创建并设置事件处理器
-        new StickerEventHandler(root, frame, this, borderEffect);
+        new StickerEventHandler(frame, this, borderEffect);
 
         // 设置基本属性
         setPickOnBounds(true);
@@ -133,28 +130,9 @@ public class StickerPane extends StackPane {
         drawCanvas.getChildren().clear();
     }
 
-    /**
-     * 设置是否保持宽高比
-     */
-    public void setPreserveRatio(boolean preserve) {
-        imageView.setPreserveRatio(preserve);
-    }
-
-    public void setRoot(Pane root) {
-        this.root = root;
-    }
-
     public void setToolbar(Pane root) {
         floatingToolbar = new FloatingToolbar(frame, root, drawCanvas, null, this, false);
         frame.getProperties().put("showToolbar", false);
-    }
-
-    /**
-     * 设置销毁回调，用于通知父容器进行清理
-     *
-     * @param callback 销毁时的回调函数
-     */
-    public void setOnDestroyCallback(Runnable callback) {
     }
 
     /**
@@ -190,9 +168,5 @@ public class StickerPane extends StackPane {
 
     public FloatingToolbar getFloatingToolbar() {
         return floatingToolbar;
-    }
-
-    public Pane getRoot() {
-        return root;
     }
 }
