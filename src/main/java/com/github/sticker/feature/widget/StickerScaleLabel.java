@@ -1,9 +1,12 @@
 package com.github.sticker.feature.widget;
 
 import javafx.animation.FadeTransition;
+import javafx.geometry.Pos;
 import javafx.scene.Cursor;
 import javafx.scene.control.Label;
 import javafx.scene.image.ImageView;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Region;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
@@ -42,23 +45,58 @@ public class StickerScaleLabel extends Label {
     }
 
     private void setupStyle() {
-        setStyle("-fx-background-color: rgba(255, 255, 255, 0.8);" +
-                "-fx-text-fill: black;" +
-                "-fx-padding: 2 8;" +
-                "-fx-background-radius: 3;" +
-                "-fx-border-radius: 3;" +
-                "-fx-border-color: rgba(204, 204, 204, 0.8);" +
+        setStyle("-fx-background-color: rgba(0, 0, 0, 0.7);" +
+                "-fx-padding: 3 0;" +  // 减小垂直内边距
+                "-fx-border-color: white;" +
                 "-fx-border-width: 1;" +
-                "-fx-font-size: 12px;" +
-                "-fx-font-weight: bold;");
-        setFont(Font.font("System", FontWeight.BOLD, 12));
-        setCursor(Cursor.HAND);
+                "-fx-font-size: 15px;" +
+                "-fx-font-family: 'Segoe UI';");
+        
+        // 创建左右两个Label和分隔线
+        Label sizeLabel = new Label("Size");
+        sizeLabel.setStyle("-fx-text-fill: white;");
+        Label valueLabel = new Label();
+        valueLabel.setStyle("-fx-text-fill: white;");
+        Region separator = new Region();
+        separator.setStyle("-fx-background-color: white; -fx-pref-width: 1;");
+        separator.setPrefHeight(16);  // 减小分隔线高度
+
+        // 创建水平布局
+        HBox layout = new HBox();
+        layout.setAlignment(Pos.CENTER);
+        layout.setSpacing(0);
+        layout.getChildren().addAll(
+            new Region() {{ setPrefWidth(8); }},  // 减小左边距
+            sizeLabel,
+            new Region() {{ setPrefWidth(8); }},  // 减小分隔线前的空间
+            separator,
+            new Region() {{ setPrefWidth(8); }},  // 减小分隔线后的空间
+            valueLabel,
+            new Region() {{ setPrefWidth(8); }}   // 减小右边距
+        );
+
+        // 存储valueLabel的引用以便更新
+        getProperties().put("valueLabel", valueLabel);
+
+        // 设置内容
+        setGraphic(layout);
+        setFont(Font.font("Segoe UI", FontWeight.NORMAL, 15));
+        setCursor(Cursor.DEFAULT);
     }
 
     private void setupPositionBinding() {
         if (owner != null) {
-            layoutXProperty().bind(owner.layoutXProperty());
-            layoutYProperty().bind(owner.layoutYProperty().subtract(25));
+            // 绑定到StickerPane的位置
+            StickerPane stickerPane = (StickerPane) owner.getParent();
+            layoutXProperty().bind(stickerPane.layoutXProperty());
+            layoutYProperty().bind(stickerPane.layoutYProperty().subtract(35));  // 增加与贴图的距离
+        }
+    }
+
+    private void updateValue(double scale) {
+        Label valueLabel = (Label) getProperties().get("valueLabel");
+        if (valueLabel != null) {
+            valueLabel.setText(String.format("%.0f%%", scale * 100));
         }
     }
 
@@ -71,7 +109,7 @@ public class StickerScaleLabel extends Label {
         fadeOut.stop();
         
         // Update text and show label
-        setText(formatScale(scale));
+        updateValue(scale);
         setVisible(true);
         setOpacity(1.0);
         
@@ -85,10 +123,6 @@ public class StickerScaleLabel extends Label {
             new javafx.animation.KeyFrame(Duration.seconds(5), e -> fadeOut.play())
         );
         hideTimer.play();
-    }
-
-    private String formatScale(double scale) {
-        return String.format("%.0f%%", scale * 100);
     }
 
     /**
