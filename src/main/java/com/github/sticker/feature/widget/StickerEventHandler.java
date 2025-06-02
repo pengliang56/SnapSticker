@@ -38,6 +38,9 @@ public class StickerEventHandler {
     }
 
     private void setupBasicProperties(StickerPane stickerPane) {
+        // 设置初始焦点属性
+        frame.setFocusTraversable(true);
+        
         StickerScaleLabel scaleLabel = new StickerScaleLabel(stickerPane.getImageView());
         root.getChildren().add(scaleLabel);
 
@@ -111,8 +114,17 @@ public class StickerEventHandler {
                 if (effect != null) {
                     effect.setActive(false);
                 }
+                // 显式移除其他贴图的焦点
+                Rectangle otherFrame = sticker.getFrame();
+                if (otherFrame != null) {
+                    otherFrame.setFocusTraversable(false);
+                }
             }
         });
+        
+        // 确保当前贴图可以接收焦点并设置焦点
+        frame.setFocusTraversable(true);
+        frame.requestFocus();
         
         // 如果是右键点击，不要消费事件，让它继续传播到ContextMenuRequest
         if (!event.isSecondaryButtonDown()) {
