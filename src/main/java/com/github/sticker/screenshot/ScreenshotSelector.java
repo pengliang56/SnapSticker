@@ -448,7 +448,7 @@ public class ScreenshotSelector {
                 if (selectionArea == null) {
                     selectionArea = createSelectionMask();
                     root.getChildren().add(selectionArea);
-                    //createCornerAndMidpointMarkers();
+                    createCornerAndMidpointMarkers();
                 }
             }
         });
@@ -1149,4 +1149,8 @@ public class ScreenshotSelector {
             }
         }
     }
-} 
+
+    public Pane getRoot() {
+        return root;
+    }
+}

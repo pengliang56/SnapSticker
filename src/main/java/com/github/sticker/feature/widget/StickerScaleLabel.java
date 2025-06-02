@@ -91,22 +91,6 @@ public class StickerScaleLabel extends Label {
             toFront();
         }
     }
-    
-    private void updatePosition() {
-        // 获取owner在场景中的位置
-        double ownerX = owner.getLayoutX();
-        double ownerY = owner.getLayoutY();
-
-        System.out.println("ownerX: " + ownerX + " ownerY: " + ownerY);
-        // 设置标签位置
-        setLayoutX(ownerX + 5);
-        setLayoutY(ownerY + 5);
-        
-        System.out.println("Label position updated - X: " + getLayoutX() + ", Y: " + getLayoutY());
-        System.out.println("Label computed size - Width: " + computePrefWidth(-1) + ", Height: " + computePrefHeight(-1));
-        System.out.println("Label actual size - Width: " + getWidth() + ", Height: " + getHeight());
-        System.out.println("Label text: " + getText());
-    }
 
     /**
      * Update the scale display and show the label.

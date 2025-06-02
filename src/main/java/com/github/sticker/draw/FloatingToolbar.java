@@ -6,6 +6,7 @@ import com.github.sticker.screenshot.ScreenshotSelector;
 import com.github.sticker.util.ShotScreen;
 import javafx.animation.FadeTransition;
 import javafx.beans.binding.Bindings;
+import javafx.concurrent.Task;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.geometry.Orientation;
 import javafx.geometry.Point2D;
@@ -542,7 +543,31 @@ public class FloatingToolbar {
     }
 
     private void createSticker() {
-        // 创建贴图面板
+        Pane root = screenshotSelector.getRoot();
+        root.lookupAll("Circle").forEach(circle ->
+                circle.setStyle("-fx-opacity: 0;"));
+        root.lookupAll("Rectangle").forEach(rec ->
+                rec.setStyle("-fx-opacity: 0;"));
+
+        new Thread(new Task<>() {
+            @Override
+            protected Void call() {
+                try {
+                    Thread.sleep(50);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+                return null;
+            }
+
+            @Override
+            protected void succeeded() {
+                addSticker();
+            }
+        }).start();
+    }
+
+    private void addSticker() {
         WritableImage screenImage = snapshotScreen();
         stickerPane = new StickerPane(screenImage);
         // 设置贴图初始大小为选区大小
