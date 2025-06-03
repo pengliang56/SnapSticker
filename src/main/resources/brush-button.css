@@ -1,0 +1,14 @@
+/* brush-control.css */
+.brush-button {
+    -fx-background-radius: 15;
+    -fx-background-color: #4A4A4A;
+    -fx-padding: 5;
+    -fx-cursor: hand;
+    -fx-border-color: rgba(255,255,255,0.2);
+    -fx-border-radius: 15;
+}
+
+.brush-button:hover {
+    -fx-background-color: #5C5C5C;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 5, 0.5, 0, 1);
+}

@@ -3,14 +3,14 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.github.mo</groupId>
     <artifactId>snapshot</artifactId>
-    <version>1.0-SNAPSHOT</version>
-    <name>Archetype - snapshot</name>
+    <version>1.0</version>
+    <name>SnapSticker</name>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>17</maven.compiler.release>
-        <javafx.version>21.0.1</javafx.version>
-        <project.name>SnapSticker</project.name>
+        <javafx.version>21.0.2</javafx.version>
+        <main.class>com.github.sticker.ScreenshotStickerApp</main.class>
     </properties>
 
     <description>
@@ -39,47 +39,71 @@
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-controls</artifactId>
             <version>${javafx.version}</version>
+            <classifier>win</classifier>
         </dependency>
         <!-- JavaFX graphics -->
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-graphics</artifactId>
             <version>${javafx.version}</version>
+            <classifier>win</classifier>
         </dependency>
         <!-- JavaFX base -->
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-base</artifactId>
             <version>${javafx.version}</version>
+            <classifier>win</classifier>
         </dependency>
         <!-- JavaFX FXML -->
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-fxml</artifactId>
             <version>${javafx.version}</version>
+            <classifier>win</classifier>
         </dependency>
         <!-- JavaFX swing support -->
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-swing</artifactId>
             <version>${javafx.version}</version>
+            <classifier>win</classifier>
         </dependency>
         <dependency>
             <groupId>com.github.kwhat</groupId>
             <artifactId>jnativehook</artifactId>
             <version>2.2.2</version>
         </dependency>
+        <!-- JNA Platform -->
+        <dependency>
+            <groupId>net.java.dev.jna</groupId>
+            <artifactId>jna</artifactId>
+            <version>5.13.0</version>
+        </dependency>
+        <dependency>
+            <groupId>net.java.dev.jna</groupId>
+            <artifactId>jna-platform</artifactId>
+            <version>5.13.0</version>
+        </dependency>
+        <dependency>
+            <groupId>net.sourceforge.tess4j</groupId>
+            <artifactId>tess4j</artifactId>
+            <version>5.13.0</version>
+        </dependency>
     </dependencies>
 
     <build>
         <plugins>
-            <!-- JavaFX Maven Plugin -->
             <plugin>
-                <groupId>org.openjfx</groupId>
-                <artifactId>javafx-maven-plugin</artifactId>
-                <version>0.0.8</version>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.3.0</version>
                 <configuration>
-                    <mainClass>com.github.sticker.ScreenshotStickerApp</mainClass>
+                    <archive>
+                        <manifest>
+                            <mainClass>${main.class}</mainClass>
+                        </manifest>
+                    </archive>
                 </configuration>
             </plugin>
             <plugin>
@@ -87,49 +111,46 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.10.1</version>
                 <configuration>
-                    <release>17</release>
+                    <source>17</source>
+                    <target>17</target>
+                    <compilerArgs>
+                        <arg>--add-exports</arg>
+                        <arg>javafx.graphics/com.sun.glass.ui=com.github.sticker</arg>
+                        <arg>--add-exports</arg>
+                        <arg>javafx.graphics/com.sun.javafx.stage=com.github.sticker</arg>
+                        <arg>--add-exports</arg>
+                        <arg>javafx.graphics/com.sun.javafx.tk=com.github.sticker</arg>
+                        <arg>--add-opens</arg>
+                        <arg>java.base/java.lang=ALL-UNNAMED</arg>
+                        <arg>--add-opens</arg>
+                        <arg>java.desktop/java.awt.image=ALL-UNNAMED</arg>
+                    </compilerArgs>
                 </configuration>
             </plugin>
-            
-            <!-- Maven Shade Plugin -->
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-shade-plugin</artifactId>
-                <version>3.4.1</version>
-                <executions>
-                    <execution>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>shade</goal>
-                        </goals>
-                        <configuration>
-                            <transformers>
-                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>com.github.sticker.ScreenshotStickerApp</mainClass>
-                                </transformer>
-                            </transformers>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            
-            <!-- JLink Maven Plugin -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-jlink-plugin</artifactId>
-                <version>3.1.0</version>
+                <groupId>org.openjfx</groupId>
+                <artifactId>javafx-maven-plugin</artifactId>
+                <version>0.0.8</version>
                 <configuration>
-                    <stripDebug>true</stripDebug>
-                    <compress>2</compress>
-                    <noHeaderFiles>true</noHeaderFiles>
-                    <noManPages>true</noManPages>
-                    <launcher>snapsticker=com.github.sticker.ScreenshotStickerApp</launcher>
+                    <mainClass>${main.class}</mainClass>
+                    <options>
+                        <option>--add-exports</option>
+                        <option>javafx.graphics/com.sun.glass.ui=com.github.sticker</option>
+                        <option>--add-exports</option>
+                        <option>javafx.graphics/com.sun.javafx.stage=com.github.sticker</option>
+                        <option>--add-exports</option>
+                        <option>javafx.graphics/com.sun.javafx.tk=com.github.sticker</option>
+                        <option>--add-opens</option>
+                        <option>java.base/java.lang=ALL-UNNAMED</option>
+                        <option>--add-opens</option>
+                        <option>java.desktop/java.awt.image=ALL-UNNAMED</option>
+                    </options>
                 </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
-                <version>3.6.1</version>
+                <version>3.6.0</version>
                 <executions>
                     <execution>
                         <id>copy-dependencies</id>
@@ -138,10 +159,88 @@
                             <goal>copy-dependencies</goal>
                         </goals>
                         <configuration>
-                            <outputDirectory>${project.build.directory}/dependency</outputDirectory>
+                            <outputDirectory>${project.build.directory}/lib</outputDirectory>
+                            <includeScope>runtime</includeScope>
+                            <includeGroupIds>org.openjfx,com.github.kwhat,net.java.dev.jna</includeGroupIds>
                         </configuration>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>com.akathist.maven.plugins.launch4j</groupId>
+                <artifactId>launch4j-maven-plugin</artifactId>
+                <version>2.1.1</version>
+                <executions>
+                    <execution>
+                        <id>create-exe</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>launch4j</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <headerType>gui</headerType>
+                    <dontWrapJar>false</dontWrapJar>
+                    <outfile>${project.build.directory}/${project.name}.exe</outfile>
+                    <jar>${project.build.directory}/${project.artifactId}-${project.version}.jar</jar>
+                    <errTitle>${project.name}</errTitle>
+                    <downloadUrl>https://adoptium.net/</downloadUrl>
+                    <priority>normal</priority>
+                    <stayAlive>true</stayAlive>
+                    <restartOnCrash>false</restartOnCrash>
+                    <icon>src/main/resources/icon.ico</icon>
+                    <jre>
+                        <path>%JAVA_HOME%</path>
+                        <minVersion>17</minVersion>
+                        <maxVersion>17.0.99</maxVersion>
+                        <runtimeBits>64</runtimeBits>
+                        <jdkPreference>jdkOnly</jdkPreference>
+                        <initialHeapSize>128</initialHeapSize>
+                        <maxHeapSize>512</maxHeapSize>
+                        <opts>
+                            <opt>--module-path "%JAVA_HOME%/jmods;./lib"</opt>
+                            <opt>--add-modules</opt>
+                            <opt>javafx.controls,javafx.graphics,javafx.swing,javafx.fxml</opt>
+                            <opt>--add-exports</opt>
+                            <opt>javafx.graphics/com.sun.glass.ui=ALL-UNNAMED</opt>
+                            <opt>--add-exports</opt>
+                            <opt>javafx.graphics/com.sun.javafx.stage=ALL-UNNAMED</opt>
+                            <opt>--add-exports</opt>
+                            <opt>javafx.graphics/com.sun.javafx.tk=ALL-UNNAMED</opt>
+                            <opt>-Djava.library.path=./lib</opt>
+                            <opt>--add-opens</opt>
+                            <opt>javafx.graphics/com.sun.glass.ui=ALL-UNNAMED</opt>
+                        </opts>
+                    </jre>
+                    <classPath>
+                        <mainClass>${main.class}</mainClass>
+                        <addDependencies>true</addDependencies>
+                        <jarLocation>lib/</jarLocation>
+                    </classPath>
+                    <versionInfo>
+                        <fileVersion>1.0.0.0</fileVersion>
+                        <txtFileVersion>${project.version}</txtFileVersion>
+                        <fileDescription>SnapSticker - Screenshot Tool</fileDescription>
+                        <copyright>MIT License</copyright>
+                        <productVersion>1.0.0.0</productVersion>
+                        <txtProductVersion>${project.version}</txtProductVersion>
+                        <productName>${project.name}</productName>
+                        <companyName>com.github.mo</companyName>
+                        <internalName>${project.name}</internalName>
+                        <originalFilename>${project.name}.exe</originalFilename>
+                    </versionInfo>
+                    <messages>
+                        <startupErr>Application startup failed</startupErr>
+                        <bundledJreErr>Java Runtime Environment not found</bundledJreErr>
+                        <jreVersionErr>Java 17 or higher is required</jreVersionErr>
+                        <launcherErr>Application launch error</launcherErr>
+                    </messages>
+                    <singleInstance>
+                        <mutexName>${project.name}</mutexName>
+                        <windowTitle>${project.name}</windowTitle>
+                    </singleInstance>
+                </configuration>
             </plugin>
         </plugins>
     </build>
