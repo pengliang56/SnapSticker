@@ -224,7 +224,7 @@ public class StickerContextMenu extends ContextMenu {
     }
 
     private void handleCopy(javafx.event.ActionEvent e) {
-        if (e.getTarget() instanceof MenuItem menuItem) {
+        if (e.getTarget() instanceof MenuItem) {
             Clipboard clipboard = Clipboard.getSystemClipboard();
             ClipboardContent content = new ClipboardContent();
             content.putImage(stickerPane.getImageView().getImage());
@@ -234,7 +234,7 @@ public class StickerContextMenu extends ContextMenu {
     }
 
     private void handleSave(javafx.event.ActionEvent e) {
-        if (e.getTarget() instanceof MenuItem menuItem) {
+        if (e.getTarget() instanceof MenuItem) {
             saveImage(stickerPane.getImageView().getImage());
             hide();
         }
