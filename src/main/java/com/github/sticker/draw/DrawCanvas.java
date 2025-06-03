@@ -95,6 +95,10 @@ public class DrawCanvas extends Pane {
         }
     }
 
+    private boolean isPointInBounds(double x, double y) {
+        return x >= 0 && x <= getWidth() && y >= 0 && y <= getHeight();
+    }
+
     void setupPenTool() {
         // Clear any existing event handlers
         this.setOnMousePressed(null);
@@ -102,6 +106,8 @@ public class DrawCanvas extends Pane {
         this.setOnMouseReleased(null);
 
         this.setOnMousePressed(e -> {
+            if (!isPointInBounds(e.getX(), e.getY())) return;
+            
             points.clear();
             lastSampledPoint = new Point2D(e.getX(), e.getY());
             points.add(lastSampledPoint);
@@ -116,21 +122,8 @@ public class DrawCanvas extends Pane {
         });
 
         this.setOnMouseDragged(e -> {
-            if (currentPath == null) {
-                // If somehow we got a drag without a press, simulate the press
-                points.clear();
-                lastSampledPoint = new Point2D(e.getX(), e.getY());
-                points.add(lastSampledPoint);
-
-                currentPath = new Path();
-                if (strokeDashed) currentPath.getStrokeDashArray().setAll(5d, 10d);
-
-                currentPath.setStroke(strokeColor);
-                currentPath.setStrokeWidth(strokeWidth);
-                currentPath.getElements().add(new MoveTo(e.getX(), e.getY()));
-                getChildren().add(currentPath);
-                return;
-            }
+            if (currentPath == null) return;
+            if (!isPointInBounds(e.getX(), e.getY())) return;
 
             this.setCursor(Cursor.NONE);
             Point2D currentPoint = new Point2D(e.getX(), e.getY());
@@ -178,6 +171,8 @@ public class DrawCanvas extends Pane {
         final Line[] previewLine = new Line[1];
 
         this.setOnMousePressed(e -> {
+            if (!isPointInBounds(e.getX(), e.getY())) return;
+            
             startX[0] = e.getX();
             startY[0] = e.getY();
 
@@ -196,11 +191,14 @@ public class DrawCanvas extends Pane {
         });
 
         this.setOnMouseDragged(e -> {
+            if (previewLine[0] == null) return;
+            
+            double endX = Math.min(Math.max(0, e.getX()), getWidth());
+            double endY = Math.min(Math.max(0, e.getY()), getHeight());
+            
             this.setCursor(Cursor.NONE);
-            if (previewLine[0] != null) {
-                previewLine[0].setEndX(e.getX());
-                previewLine[0].setEndY(e.getY());
-            }
+            previewLine[0].setEndX(endX);
+            previewLine[0].setEndY(endY);
         });
 
         this.setOnMouseReleased(e -> {
@@ -227,6 +225,8 @@ public class DrawCanvas extends Pane {
 
     void setupRectTool() {
         this.setOnMousePressed(e -> {
+            if (!isPointInBounds(e.getX(), e.getY())) return;
+            
             currentRectangle = new Rectangle();
             currentRectangle.setStroke(strokeColor);
             currentRectangle.setFill(Color.TRANSPARENT);
@@ -246,21 +246,29 @@ public class DrawCanvas extends Pane {
         });
 
         this.setOnMouseDragged(e -> {
+            if (currentRectangle == null) return;
+            
             this.setCursor(Cursor.NONE);
-            if (currentRectangle != null) {
-                double currentX = e.getX();
-                double currentY = e.getY();
+            double currentX = Math.min(Math.max(0, e.getX()), getWidth());
+            double currentY = Math.min(Math.max(0, e.getY()), getHeight());
 
-                double newX = Math.min(startX, currentX);
-                double newY = Math.min(startY, currentY);
-                double newWidth = Math.abs(currentX - startX);
-                double newHeight = Math.abs(currentY - startY);
+            double newX = Math.min(startX, currentX);
+            double newY = Math.min(startY, currentY);
+            double newWidth = Math.abs(currentX - startX);
+            double newHeight = Math.abs(currentY - startY);
 
-                currentRectangle.setX(newX);
-                currentRectangle.setY(newY);
-                currentRectangle.setWidth(newWidth);
-                currentRectangle.setHeight(newHeight);
+            // Ensure rectangle stays within bounds
+            if (newX + newWidth > getWidth()) {
+                newWidth = getWidth() - newX;
             }
+            if (newY + newHeight > getHeight()) {
+                newHeight = getHeight() - newY;
+            }
+
+            currentRectangle.setX(newX);
+            currentRectangle.setY(newY);
+            currentRectangle.setWidth(newWidth);
+            currentRectangle.setHeight(newHeight);
         });
 
         this.setOnMouseReleased(e -> {
