@@ -2,12 +2,16 @@ package com.github.sticker.feature.widget;
 
 import com.github.sticker.draw.DrawCanvas;
 import com.github.sticker.draw.FloatingToolbar;
+import javafx.scene.Cursor;
 import javafx.scene.image.ImageView;
 import javafx.scene.image.WritableImage;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
+
+import static com.github.sticker.draw.Icon.createDirectionalCursor;
+import static com.github.sticker.draw.Icon.point;
 
 /**
  * 贴图面板
@@ -19,20 +23,22 @@ public class StickerPane extends StackPane {
     private FloatingToolbar floatingToolbar;
     private final Rectangle frame;
 
-    double MAX_WIDTH = 8000;
-    double MAX_HEIGHT = 6000;
-
     public StickerPane(WritableImage image) {
+        setPickOnBounds(false);
+        setMouseTransparent(true);
+
         frame = new Rectangle();
         frame.setFocusTraversable(true);
         frame.setFill(Color.TRANSPARENT);
+        frame.setPickOnBounds(true);
+        frame.setMouseTransparent(false);
 
         // 设置图片显示
         imageView = new ImageView(image);
         imageView.setPreserveRatio(true);
         imageView.setSmooth(true);
-        imageView.setMouseTransparent(true);
         imageView.setPickOnBounds(false);
+        imageView.setMouseTransparent(true);
         imageView.setFocusTraversable(false);
 
         BorderEffect borderEffect = new BorderEffect(frame);
@@ -41,7 +47,8 @@ public class StickerPane extends StackPane {
 
         // 创建绘图画布
         drawCanvas = new DrawCanvas();
-        drawCanvas.setMouseTransparent(true);  // 初始时画布不接收鼠标事件
+        drawCanvas.setPickOnBounds(true);
+        drawCanvas.setMouseTransparent(true);
 
         // 确保画布和图片大小跟随frame大小
         imageView.fitWidthProperty().bind(frame.widthProperty());
@@ -160,5 +167,16 @@ public class StickerPane extends StackPane {
 
     public FloatingToolbar getFloatingToolbar() {
         return floatingToolbar;
+    }
+
+    public void switchDrawing(boolean activate) {
+        if (activate) {
+            frame.setMouseTransparent(true);
+            drawCanvas.setMouseTransparent(false);
+        } else {
+            frame.setMouseTransparent(false);
+            drawCanvas.setMouseTransparent(true);
+        }
+
     }
 }

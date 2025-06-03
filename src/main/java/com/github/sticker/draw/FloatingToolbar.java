@@ -240,8 +240,12 @@ public class FloatingToolbar {
         }
 
         boolean finalDrawMode = drawMode;
-        parentContainer.getChildren().forEach(it -> it.setMouseTransparent(finalDrawMode));
-        drawCanvas.setMouseTransparent(!drawMode);
+        if (stickerPane != null) {
+            stickerPane.switchDrawing(drawMode);
+        } else {
+            parentContainer.getChildren().forEach(it -> it.setMouseTransparent(finalDrawMode));
+            drawCanvas.setMouseTransparent(!drawMode);
+        }
         subToolbar.setMouseTransparent(false);
         toolbar.setMouseTransparent(false);
         aiToolbar(selectMode, drawMode);

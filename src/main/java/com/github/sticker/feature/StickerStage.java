@@ -149,11 +149,12 @@ public class StickerStage {
 
     public void addSticker(StickerPane stickerPane) {
         stickerStageList.add(stickerPane);
-        root.getChildren().add(stickerPane);
+        root.getChildren().add(0, stickerPane);
     }
 
     /**
      * 获取贴图列表
+     *
      * @return 贴图列表
      */
     public List<StickerPane> getStickerStageList() {
