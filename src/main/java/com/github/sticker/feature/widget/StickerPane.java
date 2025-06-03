@@ -22,6 +22,7 @@ public class StickerPane extends StackPane {
     private final DrawCanvas drawCanvas;
     private FloatingToolbar floatingToolbar;
     private final Rectangle frame;
+    private BorderEffect borderEffect;
 
     public StickerPane(WritableImage image) {
         setPickOnBounds(false);
@@ -41,7 +42,7 @@ public class StickerPane extends StackPane {
         imageView.setMouseTransparent(true);
         imageView.setFocusTraversable(false);
 
-        BorderEffect borderEffect = new BorderEffect(frame);
+        borderEffect = new BorderEffect(frame);
         frame.getProperties().put("borderEffect", borderEffect);
         borderEffect.playBreathingAnimation();
 
@@ -171,6 +172,7 @@ public class StickerPane extends StackPane {
 
     public void switchDrawing(boolean activate) {
         if (activate) {
+            borderEffect.setActive(true);
             frame.setMouseTransparent(true);
             drawCanvas.setMouseTransparent(false);
         } else {
