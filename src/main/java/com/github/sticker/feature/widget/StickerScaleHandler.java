@@ -1,6 +1,7 @@
 package com.github.sticker.feature.widget;
 
 import javafx.scene.input.ScrollEvent;
+import javafx.scene.shape.Rectangle;
 
 /**
  * 处理贴图缩放功能的组件。
@@ -15,6 +16,7 @@ public class StickerScaleHandler {
     private double accumulatedScale = 1.0;
     private double originalWidth;
     private double originalHeight;
+    private boolean enabled = true;
 
     // 缩放参数
     private static final double BASE_ZOOM_FACTOR = 0.0008;  // 基础缩放因子
@@ -113,17 +115,36 @@ public class StickerScaleHandler {
     /**
      * 应用指定的缩放比例
      *
-     * @param scale 要应用的缩放比例
+     * @param newScale 要应用的缩放比例
      */
-    public void applyScale(double scale) {
-        accumulatedScale = scale;
+    public void applyScale(double newScale) {
+        if (!enabled) return;
 
-        // 应用新的尺寸
-        stickerPane.getFrame().setWidth(originalWidth * scale);
-        stickerPane.getFrame().setHeight(originalHeight * scale);
+        // 限制缩放范围
+        if (newScale < minScale || newScale > maxScale) {
+            return;
+        }
+
+        accumulatedScale = newScale;
+        Rectangle frame = stickerPane.getFrame();
+
+        // 根据旋转角度决定使用哪个尺寸作为基准
+        double angle = frame.getRotate();
+        boolean isRotated = Math.abs(angle) == 90 || Math.abs(angle) == 270;
+        double baseWidth = isRotated ? originalHeight : originalWidth;
+        double baseHeight = isRotated ? originalWidth : originalHeight;
+
+        // 应用缩放
+        frame.setWidth(baseWidth * newScale);
+        frame.setHeight(baseHeight * newScale);
 
         // 更新标签显示
-        scaleLabel.updateScale(scale);
+        if (scaleLabel != null) {
+            scaleLabel.updateScale(newScale);
+        }
+
+        // 只在100%缩放时启用文字选择
+        stickerPane.setTextSelectionEnabled(Math.abs(newScale - 1.0) < 0.001);
     }
 
     /**
@@ -166,6 +187,7 @@ public class StickerScaleHandler {
      * @param enabled true启用，false禁用
      */
     public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
         if (enabled) {
             stickerPane.getFrame().setOnScroll(this::handleScroll);
         } else {

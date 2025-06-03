@@ -16,8 +16,11 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
+import javafx.scene.text.Text;
+import javafx.scene.effect.BlendMode;
 
 import java.util.List;
+import java.util.ArrayList;
 import java.util.concurrent.CompletableFuture;
 
 import static com.github.sticker.draw.Icon.createDirectionalCursor;
@@ -34,6 +37,110 @@ public class StickerPane extends StackPane {
     private final Rectangle frame;
     private final BorderEffect borderEffect;
     private final Canvas textCanvas; // 使用Canvas替代TextFlow
+    private final Pane selectionPane; // 用于文本选择的透明层
+    private final List<TextSelection> textSelections; // 存储所有文本选择区域
+    private TextSelection currentSelection; // 当前正在选择的文本
+    private double startX, startY; // 选择起始点
+
+    // 内部类：表示一个可选择的文本区域
+    private class TextSelection {
+        private final Text text;
+        private final Rectangle highlight;
+        private final double x, y, width, height;
+        private final String content;
+        private static final Color HOVER_COLOR = Color.rgb(0, 120, 215, 0.2);    // 悬停时的浅蓝色
+        private static final Color SELECTED_COLOR = Color.rgb(0, 120, 215, 0.4); // 选中时的深蓝色
+        private static final Color TRANSPARENT_TEXT = Color.TRANSPARENT;          // 透明文本
+
+        public TextSelection(String content, double x, double y, double width, double height) {
+            this.content = content;
+            this.x = x;
+            this.y = y;
+            this.width = width;
+            this.height = height;
+
+            // 创建文本节点，设置为透明
+            text = new Text(content);
+            text.setFont(new Font("System", 20));
+            text.setFill(TRANSPARENT_TEXT);
+            text.setX(x);
+            text.setY(y + height);
+            text.setMouseTransparent(true);
+
+            // 创建高亮背景
+            highlight = new Rectangle(x, y, width, height);
+            highlight.setFill(Color.TRANSPARENT);
+            highlight.setMouseTransparent(false);
+
+            // 设置鼠标事件
+            setupMouseEvents();
+        }
+
+        private void setupMouseEvents() {
+            // 鼠标进入时显示可选择状态
+            highlight.setOnMouseEntered(e -> {
+                if (this != currentSelection) {
+                    highlight.setFill(HOVER_COLOR);
+                }
+                selectionPane.setCursor(Cursor.TEXT);
+                e.consume();
+            });
+
+            // 鼠标离开时恢复透明
+            highlight.setOnMouseExited(e -> {
+                if (this != currentSelection) {
+                    highlight.setFill(Color.TRANSPARENT);
+                }
+                selectionPane.setCursor(Cursor.DEFAULT);
+                e.consume();
+            });
+
+            // 处理双击事件
+            highlight.setOnMouseClicked(e -> {
+                if (e.getClickCount() == 2) {
+                    // 如果已有选中的文本，取消其选中状态
+                    if (currentSelection != null && currentSelection != this) {
+                        currentSelection.setSelected(false);
+                    }
+                    // 设置当前文本为选中状态
+                    currentSelection = this;
+                    setSelected(true);
+                    
+                    // 确保面板获得焦点以接收键盘事件
+                    StickerPane.this.requestFocus();
+                    
+                    System.out.println("Selected text: " + content);
+                } else if (e.getClickCount() == 1) {
+                    // 单击时只显示hover效果
+                    if (this != currentSelection) {
+                        highlight.setFill(HOVER_COLOR);
+                    }
+                }
+                e.consume();
+            });
+        }
+
+        public void setSelected(boolean selected) {
+            highlight.setFill(selected ? SELECTED_COLOR : Color.TRANSPARENT);
+        }
+
+        public boolean contains(double x, double y) {
+            return x >= this.x && x <= this.x + width &&
+                   y >= this.y && y <= this.y + height;
+        }
+
+        public void addToPane(Pane pane) {
+            pane.getChildren().addAll(highlight, text);
+        }
+
+        public void removeFromPane(Pane pane) {
+            pane.getChildren().removeAll(highlight, text);
+        }
+
+        public String getContent() {
+            return content;
+        }
+    }
 
     public StickerPane(WritableImage image) {
         setPickOnBounds(false);
@@ -67,6 +174,19 @@ public class StickerPane extends StackPane {
         textCanvas.setPickOnBounds(false);
         textCanvas.setMouseTransparent(true);
 
+        // 初始化文本选择相关的组件
+        selectionPane = new Pane();
+        selectionPane.setPickOnBounds(false);
+        selectionPane.setMouseTransparent(false);
+        textSelections = new ArrayList<>();
+
+        // 设置选择层的大小绑定
+        selectionPane.prefWidthProperty().bind(frame.widthProperty());
+        selectionPane.prefHeightProperty().bind(frame.heightProperty());
+
+        // 设置键盘事件处理
+        setupKeyboardEvents();
+
         // 确保画布和图片大小跟随frame大小
         imageView.fitWidthProperty().bind(frame.widthProperty());
         imageView.fitHeightProperty().bind(frame.heightProperty());
@@ -98,7 +218,7 @@ public class StickerPane extends StackPane {
         this.getFrame().getProperties().put("scaleHandler", scaleHandler);
 
         // 添加组件到面板
-        getChildren().addAll(frame, imageView, textCanvas, drawCanvas, scaleLabel);
+        getChildren().addAll(frame, imageView, textCanvas, selectionPane, drawCanvas, scaleLabel);
 
         // 设置面板样式
         setStyle("-fx-background-color: transparent;");
@@ -136,22 +256,39 @@ public class StickerPane extends StackPane {
     }
 
     /**
+     * 设置键盘事件处理
+     */
+    private void setupKeyboardEvents() {
+        this.setOnKeyPressed(e -> {
+            if (e.isControlDown() && e.getCode() == javafx.scene.input.KeyCode.C && currentSelection != null) {
+                // 复制选中的文本到剪贴板
+                javafx.scene.input.Clipboard clipboard = javafx.scene.input.Clipboard.getSystemClipboard();
+                javafx.scene.input.ClipboardContent content = new javafx.scene.input.ClipboardContent();
+                content.putString(currentSelection.getContent());
+                clipboard.setContent(content);
+                
+                System.out.println("Copied text: " + currentSelection.getContent());
+                e.consume();
+            }
+        });
+        
+        // 确保面板可以接收键盘事件
+        this.setFocusTraversable(true);
+    }
+
+    /**
      * 添加OCR识别的文字到指定位置
      */
     public void addOcrText(String text, double x, double y, double width, double height) {
-        GraphicsContext gc = textCanvas.getGraphicsContext2D();
-        
-        // 使用固定的20号字体
-        gc.setFill(Color.RED);
-        gc.setFont(new Font("System", 20));
-        
-        // 直接在指定位置绘制文本
-        gc.fillText(text, x, y + height);
+        // 创建新的文本选择区域
+        TextSelection selection = new TextSelection(text, x, y, width, height);
+        textSelections.add(selection);
+        selection.addToPane(selectionPane);
         
         // 调试信息
         System.out.println(String.format(
-            "Drawing text '%s' at position (%.1f,%.1f)",
-            text, x, y + height
+            "Added selectable text '%s' at position (%.1f,%.1f)",
+            text, x, y
         ));
     }
 
@@ -192,15 +329,32 @@ public class StickerPane extends StackPane {
      * 清除所有OCR文字
      */
     public void clearOcrText() {
-        GraphicsContext gc = textCanvas.getGraphicsContext2D();
-        gc.clearRect(0, 0, textCanvas.getWidth(), textCanvas.getHeight());
+        if (currentSelection != null) {
+            currentSelection.setSelected(false);
+            currentSelection = null;
+        }
+        selectionPane.getChildren().clear();
+        textSelections.clear();
     }
 
     /**
      * 设置OCR文字层的可见性
      */
     public void setOcrTextVisible(boolean visible) {
-        textCanvas.setVisible(visible);
+        selectionPane.setVisible(visible);
+    }
+
+    /**
+     * 启用或禁用文字选择功能
+     * @param enabled true 启用文字选择，false 禁用文字选择
+     */
+    public void setTextSelectionEnabled(boolean enabled) {
+        selectionPane.setMouseTransparent(!enabled);
+        selectionPane.setCursor(enabled ? Cursor.DEFAULT : Cursor.NONE);
+        if (!enabled && currentSelection != null) {
+            currentSelection.setSelected(false);
+            currentSelection = null;
+        }
     }
 
     /**
