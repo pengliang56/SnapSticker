@@ -302,7 +302,6 @@ public class StickerContextMenu extends ContextMenu {
     private void handleShowToolbar(javafx.event.ActionEvent e) {
         if (e.getTarget() instanceof CheckMenuItem) {
             stickerPane.getFloatingToolbar().drawMode(null, DrawMode.SWITCH);
-            stickerPane.getFrame().getProperties().put("showToolbar", stickerPane.getFloatingToolbar().isSwitchDirection());
         }
     }
 

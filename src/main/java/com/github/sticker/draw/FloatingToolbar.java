@@ -192,9 +192,6 @@ public class FloatingToolbar {
         scene.addEventFilter(KeyEvent.KEY_PRESSED, e -> {
             if (e.getCode() == KeyCode.SPACE) {
                 if (selectionArea.isFocused()) {
-                    if (stickerStage != null) {
-                        stickerPane.getFrame().getProperties().put("showToolbar", !isSwitchDirection());
-                    }
                     drawMode(null, DrawMode.SWITCH);
                     e.consume();
                 }
@@ -242,6 +239,7 @@ public class FloatingToolbar {
         boolean finalDrawMode = drawMode;
         if (stickerPane != null) {
             stickerPane.switchDrawing(drawMode);
+            stickerPane.getFrame().getProperties().put("showToolbar", !switchDirection);
         } else {
             parentContainer.getChildren().forEach(it -> it.setMouseTransparent(finalDrawMode));
             drawCanvas.setMouseTransparent(!drawMode);
