@@ -41,6 +41,7 @@ public class StickerContextMenu extends ContextMenu {
     public StickerContextMenu(Stage stage, StickerPane stickerPane) {
         this.stage = stage;
         this.stickerPane = stickerPane;
+
         getStyleClass().add("sticker-context-menu");
 
         // Initialize menu items
@@ -227,7 +228,7 @@ public class StickerContextMenu extends ContextMenu {
         if (e.getTarget() instanceof MenuItem) {
             Clipboard clipboard = Clipboard.getSystemClipboard();
             ClipboardContent content = new ClipboardContent();
-            content.putImage(stickerPane.getImageView().getImage());
+            content.putImage(ShotScreen.snapshotScreen(stickerPane.getScene(), stickerPane.getFrame()));
             clipboard.setContent(content);
             hide();
         }
@@ -235,7 +236,7 @@ public class StickerContextMenu extends ContextMenu {
 
     private void handleSave(javafx.event.ActionEvent e) {
         if (e.getTarget() instanceof MenuItem) {
-            saveImage(stickerPane.getImageView().getImage());
+            saveImage(ShotScreen.snapshotScreen(stickerPane.getScene(), stickerPane.getFrame()));
             hide();
         }
     }

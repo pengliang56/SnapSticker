@@ -120,6 +120,10 @@
                         <arg>javafx.graphics/com.sun.javafx.stage=com.github.sticker</arg>
                         <arg>--add-exports</arg>
                         <arg>javafx.graphics/com.sun.javafx.tk=com.github.sticker</arg>
+                        <arg>--add-opens</arg>
+                        <arg>java.base/java.lang=ALL-UNNAMED</arg>
+                        <arg>--add-opens</arg>
+                        <arg>java.desktop/java.awt.image=ALL-UNNAMED</arg>
                     </compilerArgs>
                 </configuration>
             </plugin>
@@ -136,6 +140,10 @@
                         <option>javafx.graphics/com.sun.javafx.stage=com.github.sticker</option>
                         <option>--add-exports</option>
                         <option>javafx.graphics/com.sun.javafx.tk=com.github.sticker</option>
+                        <option>--add-opens</option>
+                        <option>java.base/java.lang=ALL-UNNAMED</option>
+                        <option>--add-opens</option>
+                        <option>java.desktop/java.awt.image=ALL-UNNAMED</option>
                     </options>
                 </configuration>
             </plugin>

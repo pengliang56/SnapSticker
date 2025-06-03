@@ -8,6 +8,7 @@ module com.github.sticker {
     requires javafx.controls;
     requires javafx.graphics;
     requires javafx.swing;
+    requires tess4j;
 
     opens com.github.sticker to javafx.graphics, com.sun.jna;
     exports com.github.sticker;
