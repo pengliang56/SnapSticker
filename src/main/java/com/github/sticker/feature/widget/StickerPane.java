@@ -22,7 +22,7 @@ public class StickerPane extends StackPane {
     private final DrawCanvas drawCanvas;
     private FloatingToolbar floatingToolbar;
     private final Rectangle frame;
-    private BorderEffect borderEffect;
+    private final BorderEffect borderEffect;
 
     public StickerPane(WritableImage image) {
         setPickOnBounds(false);
